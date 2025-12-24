@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: load-test-controller
+  
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/loadtest
+      database: loadtest
+    
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+  
+  websocket:
+    allowed-origins: "*"
+
+server:
+  port: 8080
+
+# Custom Application Properties
+loadtest:
+  redis:
+    queue:
+      tasks: "loadtest:tasks"
+      results: "loadtest:results"
+      heartbeat: "loadtest:heartbeat"
+  
+  worker:
+    timeout: 30000  # 30 seconds
+    heartbeat-interval: 5000  # 5 seconds
+  
+  supabase:
+    url: ${SUPABASE_URL:https://your-project.supabase.co}
+    jwt-secret: ${SUPABASE_JWT_SECRET:your-jwt-secret}
+
+logging:
+  level:
+    com.loadtest: DEBUG
+    org.springframework.data.mongodb: INFO
