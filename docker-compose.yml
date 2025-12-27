@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # MongoDB for metrics storage
+  mongodb:
+    image: mongo:7.0
+    container_name: loadtest-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: loadtest
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - loadtest-network
+
+  # Redis for message queue
+  redis:
+    image: redis:7-alpine
+    container_name: loadtest-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - loadtest-network
+
+  # Spring Boot Controller
+  controller:
+    build:
+      context: ./controller
+      dockerfile: Dockerfile
+    container_name: loadtest-controller
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://admin:password@mongodb:27017/loadtest?authSource=admin
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - loadtest-network
+    restart: unless-stopped
+
+  # Rust Worker (scale with --scale worker=N)
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379
+      RUST_LOG: info
+    depends_on:
+      - redis
+      - controller
+    networks:
+      - loadtest-network
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: loadtest-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - controller
+    networks:
+      - loadtest-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  loadtest-network:
+    driver: bridge
