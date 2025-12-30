@@ -1,0 +1,13 @@
+# ========== k8s/configmaps.yaml ==========
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loadtest-config
+  namespace: loadtest
+data:
+  SPRING_PROFILES_ACTIVE: "production"
+  SPRING_REDIS_HOST: "redis-service"
+  SPRING_DATA_MONGODB_URI: "mongodb://mongo-service:27017/loadtest"
+  REDIS_URL: "redis://redis-service:6379"
+
+---

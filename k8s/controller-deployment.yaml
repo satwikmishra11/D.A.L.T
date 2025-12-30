@@ -1,0 +1,72 @@
+# ========== k8s/controller-deployment.yaml ==========
+apiVersion: v1
+kind: Service
+metadata:
+  name: controller-service
+  namespace: loadtest
+spec:
+  type: ClusterIP
+  selector:
+    app: controller
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+  namespace: loadtest
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: controller
+  template:
+    metadata:
+      labels:
+        app: controller
+    spec:
+      containers:
+      - name: controller
+        image: your-registry/loadtest-controller:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production"
+        - name: SPRING_REDIS_HOST
+          value: "redis-service"
+        - name: SPRING_DATA_MONGODB_URI
+          value: "mongodb://admin:$(MONGO_PASSWORD)@mongo-service:27017/loadtest?authSource=admin"
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: loadtest-secrets
+              key: MONGO_PASSWORD
+        - name: SUPABASE_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: loadtest-secrets
+              key: SUPABASE_JWT_SECRET
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
