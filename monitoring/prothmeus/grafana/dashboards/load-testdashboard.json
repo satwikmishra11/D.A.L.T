@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "title": "LoadTest Platform - Overview",
+    "tags": ["loadtest", "performance"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(loadtest_requests_total[5m])",
+            "legendFormat": "{{scenario}}"
+          }
+        ]
+      },
+      {
+        "title": "Latency Percentiles",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, loadtest_latency_seconds)",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, loadtest_latency_seconds)",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, loadtest_latency_seconds)",
+            "legendFormat": "P99"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(loadtest_errors_total[5m])",
+            "legendFormat": "Errors/sec"
+          }
+        ]
+      },
+      {
+        "title": "Active Workers",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "loadtest_active_workers",
+            "legendFormat": "Workers"
+          }
+        ]
+      }
+    ]
+  }
+}
