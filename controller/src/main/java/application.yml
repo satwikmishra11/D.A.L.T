@@ -38,3 +38,8 @@ logging:
   level:
     com.loadtest: DEBUG
     org.springframework.data.mongodb: INFO
+
+security:
+  jwt:
+    secret: loadtest_super_secret_key_2025
+    expiration-ms: 86400000
