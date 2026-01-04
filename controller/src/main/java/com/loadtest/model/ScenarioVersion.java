@@ -27,6 +27,9 @@ public class ScenarioVersion {
         return scenarioId;
     }
 
+    private int version = 0;
+
+
     public int getVersion() {
         return version;
     }
