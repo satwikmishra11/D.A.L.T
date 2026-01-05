@@ -16,18 +16,28 @@ public class ScenarioVersion {
     private String configJson;
     private Instant createdAt;
 
-    public ScenarioVersion(String scenarioId, int version, String configJson) {
+    public ScenarioVersion(
+            String scenarioId,
+            int version,
+            String configJson,
+            boolean rollback
+    ) {
         this.scenarioId = scenarioId;
         this.version = version;
         this.configJson = configJson;
+        this.rollback = rollback;
         this.createdAt = Instant.now();
     }
+
 
     public String getScenarioId() {
         return scenarioId;
     }
 
     private int version = 0;
+
+    private boolean rollback;
+
 
 
     public int getVersion() {

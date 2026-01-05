@@ -4,6 +4,10 @@ import com.loadtest.model.ScenarioVersion;
 import com.loadtest.service.ScenarioVersionService;
 import com.loadtest.utils.JsonDiffUtil;
 import org.springframework.web.bind.annotation.*;
+import com.loadtest.dto.RollbackRequest;
+import com.loadtest.dto.ScenarioResponse;
+import com.loadtest.model.LoadTestScenario;
+
 
 import java.util.List;
 import java.util.Map;
@@ -38,4 +42,14 @@ public class ScenarioVersionController {
                 newV.getConfigJson()
         );
     }
+}
+@PostMapping("/rollback")
+public ScenarioResponse rollback(
+        @PathVariable String id,
+        @RequestBody RollbackRequest request
+) {
+    LoadTestScenario scenario =
+            versionService.rollback(id, request.getTargetVersion());
+
+    return new ScenarioResponse(scenario);
 }
