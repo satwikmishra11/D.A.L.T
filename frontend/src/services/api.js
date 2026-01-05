@@ -63,6 +63,11 @@ export const alertAPI = {
   acknowledge: (alertId) => api.post(`/alerts/${alertId}/acknowledge`),
 };
 
+export const rollbackScenario = (scenarioId, targetVersion) =>
+  api.post(`/scenarios/${scenarioId}/versions/rollback`, {
+    targetVersion,
+  });
+
 export const exportAPI = {
   toJson: (scenarioId) => 
     api.get(`/export/${scenarioId}/json`, { responseType: 'blob' }),

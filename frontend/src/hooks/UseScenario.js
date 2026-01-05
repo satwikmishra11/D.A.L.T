@@ -56,6 +56,11 @@ export const useScenarios = () => {
     }
   };
 
+  const refresh = async () => {
+  const data = await fetchScenarios();
+  setScenarios(data);
+  };
+
   return {
     scenarios,
     loading,
