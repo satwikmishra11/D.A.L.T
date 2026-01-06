@@ -1,5 +1,10 @@
 import api from "../services/api";
 import { useState } from "react";
+import { isAdmin } from "../services/auth"; 
+
+{isAdmin() && (
+  <button onClick={() => transition("APPROVED")}>Approve</button>
+)}
 
 export default function ApprovalPanel({ scenario, onUpdate }) {
   const [comment, setComment] = useState("");
