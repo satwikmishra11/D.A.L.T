@@ -11,6 +11,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+admissionClient.validate(
+    scenario.getId(),
+    scenario.getParallelUsers(),
+    scenario.getDurationSeconds(),
+    scenario.getApprovalStatus().name()
+);
+
+
 @Service
 public class LoadTestOrchestrationService {
 
