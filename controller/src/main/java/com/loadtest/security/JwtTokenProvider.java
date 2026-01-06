@@ -13,24 +13,24 @@ import io.jsonwebtoken.SignatureAlgorithm;
 public class JwtTokenProvider {
 
     @Value("${security.jwt.secret}")
-    private String jwtSecret;
+    private String secret;
 
     @Value("${security.jwt.expiration-ms}")
-    private long jwtExpirationMs;
+    private long expiration;
 
     public String generateToken(String userId, String role) {
         return Jwts.builder()
                 .setSubject(userId)
                 .claim("role", role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(SignatureAlgorithm.HS256, jwtSecret)
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(SignatureAlgorithm.HS256, secret)
                 .compact();
     }
 
-    public Claims validateToken(String token) {
+    public Claims validate(String token) {
         return Jwts.parser()
-                .setSigningKey(jwtSecret)
+                .setSigningKey(secret)
                 .parseClaimsJws(token)
                 .getBody();
     }

@@ -53,3 +53,15 @@ public ScenarioResponse rollback(
 
     return new ScenarioResponse(scenario);
 }
+
+@PreAuthorize("hasRole('ADMIN')")
+@PostMapping("/rollback")
+public ScenarioResponse RollbackRequest rollback(
+        @PathVariable String id,
+        @RequestBody RollbackRequest request
+) {
+    LoadTestScenario scenario =
+            versionService.rollback(id, request.getTargetVersion());
+
+    return new ScenarioResponse(scenario);
+}
