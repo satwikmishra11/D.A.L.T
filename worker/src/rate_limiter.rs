@@ -2,6 +2,21 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static TARGET_RPS: AtomicU64 = AtomicU64::new(1000);
+
+pub fn adjust(latency_ms: u64) {
+    if latency_ms > 1000 {
+        TARGET_RPS.fetch_sub(50, Ordering::Relaxed);
+    } else {
+        TARGET_RPS.fetch_add(10, Ordering::Relaxed);
+    }
+}
+
+pub fn current_rps() -> u64 {
+    TARGET_RPS.load(Ordering::Relaxed)
+}
 
 pub struct TokenBucketRateLimiter {
     capacity: u32,

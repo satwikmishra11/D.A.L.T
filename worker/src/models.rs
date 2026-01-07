@@ -1,5 +1,22 @@
 // ========== Enhanced models.rs additions ==========
 use serde::{Deserialize, Serialize};
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize)]
+pub struct WorkerRegistration {
+    pub worker_id: String,
+    pub capabilities: Vec<String>,
+    pub max_rps: u32,
+}
+
+#[derive(Serialize)]
+pub struct WorkerHeartbeat {
+    pub worker_id: String,
+    pub cpu: f32,
+    pub memory_mb: u64,
+    pub active_tasks: usize,
+}
+
 
 impl RequestMetric {
     pub fn new_error(error_message: String, error_type: String) -> Self {

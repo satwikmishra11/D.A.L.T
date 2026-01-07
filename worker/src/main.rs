@@ -199,6 +199,23 @@ impl Worker {
         Ok(results)
     }
     
+    #[tokio::main]
+    async fn main() {
+        let controller = std::env::var("CONTROLLER_URL").unwrap();
+        let worker_id = uuid::Uuid::new_v4().to_string();
+
+        registry::register(&controller, &worker_id).await;
+
+        tokio::spawn(heartbeat::start_heartbeat(
+            controller.clone(),
+            worker_id.clone(),
+        ));
+
+        tokio::spawn(shutdown::listen());
+
+        worker::start(controller, worker_id).await;
+    }
+    
     async fn execute_request(
         http_client: &Client,
         task: &WorkerTask,

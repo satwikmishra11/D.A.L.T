@@ -13,6 +13,48 @@ use tracing::{info, warn, error, debug};
 use uuid::Uuid;
 use chrono::Utc;
 
+use crate::{
+    circuit_breaker::CircuitBreaker,
+    rate_limiter,
+    tenant,
+};
+
+use std::sync::Mutex;
+
+static ACTIVE: Mutex<usize> = Mutex::new(0);
+
+pub fn active_tasks() -> usize {
+    *ACTIVE.lock().unwrap()
+}
+
+pub fn stop_accepting() {
+    *ACTIVE.lock().unwrap() = 0;
+}
+
+pub async fn execute(task: crate::models::WorkerTask) {
+    tenant::set_org(task.org.clone());
+
+    let mut breaker = CircuitBreaker::new();
+
+    if !breaker.allow() {
+        return;
+    }
+
+    let start = std::time::Instant::now();
+    let res = crate::http_client::send(&task).await;
+
+    let latency = start.elapsed().as_millis() as u64;
+
+    match res {
+        Ok(status) => {
+            breaker.record_success();
+            rate_limiter::adjust(latency);
+            crate::metrics::emit(latency, status, task.org);
+        }
+        Err(_) => breaker.record_failure(),
+    }
+}
+
 pub struct Worker {
     worker_id: String,
     config: Config,

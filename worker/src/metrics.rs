@@ -1,6 +1,25 @@
 // ========== src/metrics.rs ==========
 use crate::models::RequestMetric;
 use std::sync::{Arc, Mutex};
+use serde::Serialize;
+use uuid::Uuid;
+
+#[derive(Serialize)]
+pub struct MetricEvent {
+    pub trace_id: String,
+    pub latency_ms: u64,
+    pub status: u16,
+    pub org: String,
+}
+
+pub fn new_metric(latency: u64, status: u16, org: String) -> MetricEvent {
+    MetricEvent {
+        trace_id: Uuid::new_v4().to_string(),
+        latency_ms: latency,
+        status,
+        org,
+    }
+}
 
 pub struct MetricsCollector {
     latencies: Arc<Mutex<Vec<u64>>>,
