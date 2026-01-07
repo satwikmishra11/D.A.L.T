@@ -7,11 +7,13 @@ service AdmissionService {
 }
 
 message ExecutionRequest {
-  string scenarioId = 1;
-  int32 users = 2;
-  int32 duration = 3;
-  string approvalStatus = 4;
+  string orgId = 1;
+  string scenarioId = 2;
+  int32 users = 3;
+  int32 duration = 4;
+  string approvalStatus = 5;
 }
+
 
 message ExecutionResponse {
   bool allowed = 1;

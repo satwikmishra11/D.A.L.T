@@ -7,6 +7,10 @@ func Validate(users int32, duration int32, status string) error {
 		return errors.New("scenario not approved")
 	}
 
+	if orgId == "free-tier" && users > 1000 {
+	return errors.New("org limit exceeded")
+	}
+
 	if users > 100_000 {
 		return errors.New("user limit exceeded")
 	}
