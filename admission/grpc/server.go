@@ -27,17 +27,28 @@ func NewServer() *Server {
 	}
 }
 
+
 func (s *Server) ValidateExecution(
 	ctx context.Context,
 	req *pb.ExecutionRequest,
 ) (*pb.ExecutionResponse, error) {
 
-	if !s.limiter.Allow() {
+	observability.IncTotal()
+
+	if deduper.Seen(req.RequestId) {
+		return &pb.ExecutionResponse{Allowed: true}, nil
+	}
+
+	if !shed.Allow() {
+		observability.IncDenied()
 		return &pb.ExecutionResponse{
 			Allowed: false,
-			Reason:  "rate limit exceeded",
+			Reason:  "system overloaded",
 		}, nil
 	}
+
+	shed.Enter()
+	defer shed.Exit()
 
 	err := s.engine.Evaluate(policy.Context{
 		OrgID:    req.OrgId,
@@ -46,13 +57,13 @@ func (s *Server) ValidateExecution(
 	})
 
 	if err != nil {
-		audit.Record(req.OrgId, "EXEC_DENIED", err.Error())
+		observability.IncDenied()
 		return &pb.ExecutionResponse{
 			Allowed: false,
 			Reason:  err.Error(),
 		}, nil
 	}
 
-	audit.Record(req.OrgId, "EXEC_ALLOWED", "")
+	deduper.Mark(req.RequestId)
 	return &pb.ExecutionResponse{Allowed: true}, nil
 }

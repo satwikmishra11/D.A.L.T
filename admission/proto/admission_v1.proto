@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package admission.v1;
+
+service AdmissionService {
+  rpc ValidateExecution (ExecutionRequest) returns (ExecutionResponse);
+}
+
+message ExecutionRequest {
+  string request_id = 1;
+  string org_id = 2;
+  int32 users = 3;
+  int32 duration = 4;
+}
+
+message ExecutionResponse {
+  bool allowed = 1;
+  string reason = 2;
+}

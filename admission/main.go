@@ -33,3 +33,19 @@ func main() {
 		log.Fatalf("failed to serve gRPC: %v", err)
 	}
 }
+
+func main() {
+	leadership.StartElection()
+
+	ctx := context.Background()
+
+	go httpserver.StartHealthServer()
+
+	go func() {
+		lifecycle.Wait(ctx)
+		log.Println("Graceful shutdown complete")
+		os.Exit(0)
+	}()
+
+	startGrpc()
+}
