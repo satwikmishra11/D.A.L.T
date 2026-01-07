@@ -2,12 +2,29 @@ package grpcserver
 
 import (
 	"context"
+
+	"control-plane-go/audit"
 	"control-plane-go/policy"
+	"control-plane-go/ratelimit"
+
 	pb "control-plane-go/proto"
 )
 
 type Server struct {
 	pb.UnimplementedAdmissionServiceServer
+	engine  *policy.Engine
+	limiter *ratelimit.Limiter
+}
+
+func NewServer() *Server {
+	engine := policy.NewEngine(
+		policy.EnforceUserQuota(),
+		policy.MaxDuration(3600),
+	)
+	return &Server{
+		engine:  engine,
+		limiter: ratelimit.New(10),
+	}
 }
 
 func (s *Server) ValidateExecution(
@@ -15,18 +32,27 @@ func (s *Server) ValidateExecution(
 	req *pb.ExecutionRequest,
 ) (*pb.ExecutionResponse, error) {
 
-	err := policy.Validate(
-		req.Users,
-		req.Duration,
-		req.ApprovalStatus,
-	)
+	if !s.limiter.Allow() {
+		return &pb.ExecutionResponse{
+			Allowed: false,
+			Reason:  "rate limit exceeded",
+		}, nil
+	}
+
+	err := s.engine.Evaluate(policy.Context{
+		OrgID:    req.OrgId,
+		Users:   req.Users,
+		Duration: req.Duration,
+	})
 
 	if err != nil {
+		audit.Record(req.OrgId, "EXEC_DENIED", err.Error())
 		return &pb.ExecutionResponse{
 			Allowed: false,
 			Reason:  err.Error(),
 		}, nil
 	}
 
+	audit.Record(req.OrgId, "EXEC_ALLOWED", "")
 	return &pb.ExecutionResponse{Allowed: true}, nil
 }

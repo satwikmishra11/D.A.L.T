@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"control-plane-go/httpserver"
 
 	pb "control-plane-go/proto"
 	grpcserver "control-plane-go/grpc"
@@ -11,11 +12,24 @@ import (
 )
 
 func main() {
-	lis, _ := net.Listen("tcp", ":9090")
-	server := grpc.NewServer()
+	// Start health & readiness endpoints
+	httpserver.StartHealthServer()
 
-	pb.RegisterAdmissionServiceServer(server, &grpcserver.Server{})
+	// Start gRPC server
+	lis, err := net.Listen("tcp", ":9090")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	grpcSrv := grpc.NewServer()
+
+	pb.RegisterAdmissionServiceServer(
+		grpcSrv,
+		grpcserver.NewServer(), // alias now resolves correctly
+	)
 
 	log.Println("Go Control Plane running on :9090")
-	server.Serve(lis)
+	if err := grpcSrv.Serve(lis); err != nil {
+		log.Fatalf("failed to serve gRPC: %v", err)
+	}
 }
