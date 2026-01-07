@@ -7,6 +7,11 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
+.addFilterBefore(
+    tenantResolutionFilter,
+    JwtSecurityContextFilter.class
+)
+
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {

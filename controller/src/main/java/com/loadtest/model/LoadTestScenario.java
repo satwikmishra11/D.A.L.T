@@ -6,3 +6,7 @@ private String approvalComment;
 
 private boolean locked;
 private String lockedBy;
+
+private String organizationId;
+private String projectId;
+

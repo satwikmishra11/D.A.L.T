@@ -12,6 +12,8 @@ public class User {
     private String username;
     private String password;
     private Role role;
+    private String organizationId;
+
 
     public enum Role {
         USER,

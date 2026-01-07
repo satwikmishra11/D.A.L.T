@@ -137,6 +137,8 @@ public class RedisQueueService {
         return getActiveWorkerIds().size();
     }
     
+    String queueKey = "org:" + orgId + ":execution:" + executionId;
+
     // ========== Cleanup Operations ==========
     
     public void clearTaskQueue() {
