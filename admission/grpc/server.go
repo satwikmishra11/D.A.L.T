@@ -3,52 +3,65 @@ package grpcserver
 import (
 	"context"
 
-	"control-plane-go/audit"
-	"control-plane-go/policy"
-	"control-plane-go/ratelimit"
+	"admission/audit"
+	"admission/dedupe"
+	"admission/observability"
+	"admission/policy"
+	"admission/ratelimit"
+	"admission/shed"
+	"admission/state"
 
-	pb "control-plane-go/proto"
+	pb "admission/proto"
 )
 
 type Server struct {
 	pb.UnimplementedAdmissionServiceServer
-	engine  *policy.Engine
-	limiter *ratelimit.Limiter
+	engine *policy.Engine
+	dedupe *dedupe.Idempotency
+	shed   *shed.Shedder
+	limit  *ratelimit.Limiter
 }
 
-func NewServer() *Server {
-	engine := policy.NewEngine(
-		policy.EnforceUserQuota(),
-		policy.MaxDuration(3600),
-	)
+func NewServer(store state.Store) *Server {
 	return &Server{
-		engine:  engine,
-		limiter: ratelimit.New(10),
+		engine: policy.NewEngine(
+			policy.EnforceQuota(),
+			policy.MaxDuration(3600),
+		),
+		dedupe: dedupe.New(store),
+		shed:   shed.New(store),
+		limit:  ratelimit.New(store, 50),
 	}
 }
-
 
 func (s *Server) ValidateExecution(
 	ctx context.Context,
 	req *pb.ExecutionRequest,
 ) (*pb.ExecutionResponse, error) {
 
-	observability.IncTotal()
+	observability.Total.Add(1)
 
-	if deduper.Seen(req.RequestId) {
+	if s.dedupe.Seen(ctx, req.RequestId) {
 		return &pb.ExecutionResponse{Allowed: true}, nil
 	}
 
-	if !shed.Allow() {
-		observability.IncDenied()
+	if !s.shed.Enter(ctx) {
+		observability.Denied.Add(1)
 		return &pb.ExecutionResponse{
 			Allowed: false,
 			Reason:  "system overloaded",
 		}, nil
 	}
+	defer s.shed.Exit(ctx)
 
-	shed.Enter()
-	defer shed.Exit()
+	if !s.limit.Allow(ctx, req.OrgId) {
+		observability.Denied.Add(1)
+		return &pb.ExecutionResponse{
+			Allowed: false,
+			Reason:  "rate limit exceeded",
+		}, nil
+	}
+	defer s.limit.Release(ctx, req.OrgId)
 
 	err := s.engine.Evaluate(policy.Context{
 		OrgID:    req.OrgId,
@@ -57,13 +70,15 @@ func (s *Server) ValidateExecution(
 	})
 
 	if err != nil {
-		observability.IncDenied()
+		observability.Denied.Add(1)
+		audit.Record(req.OrgId, "DENIED", err.Error())
 		return &pb.ExecutionResponse{
 			Allowed: false,
 			Reason:  err.Error(),
 		}, nil
 	}
 
-	deduper.Mark(req.RequestId)
+	s.dedupe.Mark(ctx, req.RequestId)
+	audit.Record(req.OrgId, "ALLOWED", "")
 	return &pb.ExecutionResponse{Allowed: true}, nil
 }
