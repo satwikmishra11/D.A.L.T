@@ -39,6 +39,17 @@ func (s *Server) ValidateExecution(
 	req *pb.ExecutionRequest,
 ) (*pb.ExecutionResponse, error) {
 
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	defer func() {
+		if r := recover(); r != nil {
+			observability.Error("panic_recovered", map[string]interface{}{
+				"panic": r,
+			})
+		}
+	}()
+
 	observability.Total.Add(1)
 
 	if s.dedupe.Seen(ctx, req.RequestId) {
