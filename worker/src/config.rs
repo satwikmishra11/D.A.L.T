@@ -20,6 +20,11 @@ pub struct Config {
     pub retry_delay_ms: u64,
     pub enable_compression: bool,
     pub enable_http2: bool,
+    pub controller_url: String,
+    pub max_concurrency: usize,
+    pub heartbeat_interval_secs: u64,
+    pub request_timeout_secs: u64,
+    pub worker_version: String,
 }
 
 impl Config {
@@ -78,5 +83,25 @@ impl Config {
                 .parse()
                 .unwrap_or(true),
         })
+    }
+}
+
+impl Config {
+    pub fn load() -> Self {
+        Self {
+            controller_url: env::var("CONTROLLER_URL")
+                .expect("CONTROLLER_URL not set"),
+            max_concurrency: env::var("MAX_CONCURRENCY")
+                .unwrap_or("100".into())
+                .parse().unwrap(),
+            heartbeat_interval_secs: env::var("HEARTBEAT_INTERVAL")
+                .unwrap_or("5".into())
+                .parse().unwrap(),
+            request_timeout_secs: env::var("REQUEST_TIMEOUT")
+                .unwrap_or("10".into())
+                .parse().unwrap(),
+            worker_version: env::var("WORKER_VERSION")
+                .unwrap_or("dev".into()),
+        }
     }
 }

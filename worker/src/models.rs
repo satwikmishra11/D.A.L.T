@@ -48,3 +48,29 @@ pub struct RequestMetric {
     pub error: Option<String>,
     pub error_type: Option<String>,
 }
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct WorkerTask {
+    pub task_id: String,
+    pub execution_id: String,
+    pub target_url: String,
+    pub method: String,
+    pub org_id: String,
+}
+
+#[derive(Serialize)]
+pub struct WorkerRegistration {
+    pub worker_id: String,
+    pub version: String,
+    pub capacity: usize,
+}
+
+#[derive(Serialize)]
+pub struct WorkerHeartbeat {
+    pub worker_id: String,
+    pub cpu: f32,
+    pub memory_mb: u64,
+    pub active_tasks: usize,
+}
