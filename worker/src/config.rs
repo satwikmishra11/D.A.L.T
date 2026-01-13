@@ -22,9 +22,8 @@ pub struct Config {
     pub enable_http2: bool,
     pub controller_url: String,
     pub max_concurrency: usize,
-    pub heartbeat_interval_secs: u64,
-    pub request_timeout_secs: u64,
     pub worker_version: String,
+    pub worker_token: Option<String>,
 }
 
 impl Config {
@@ -39,6 +38,7 @@ impl Config {
             heartbeat_key: env::var("HEARTBEAT_KEY")
                 .unwrap_or_else(|_| "loadtest:heartbeat".to_string()),
             heartbeat_interval_secs: env::var("HEARTBEAT_INTERVAL_SECS")
+                .or_else(|_| env::var("HEARTBEAT_INTERVAL"))
                 .unwrap_or_else(|_| "5".to_string())
                 .parse()
                 .context("Invalid heartbeat interval")?,
@@ -51,6 +51,7 @@ impl Config {
                 .parse()
                 .context("Invalid max concurrent requests")?,
             request_timeout_secs: env::var("REQUEST_TIMEOUT_SECS")
+                .or_else(|_| env::var("REQUEST_TIMEOUT"))
                 .unwrap_or_else(|_| "30".to_string())
                 .parse()
                 .context("Invalid request timeout")?,
@@ -82,26 +83,20 @@ impl Config {
                 .unwrap_or_else(|_| "true".to_string())
                 .parse()
                 .unwrap_or(true),
+            controller_url: env::var("CONTROLLER_URL")
+                .unwrap_or_else(|_| "http://localhost:8080".to_string()),
+            max_concurrency: env::var("MAX_CONCURRENCY")
+                .unwrap_or_else(|_| "100".to_string())
+                .parse()
+                .unwrap_or(100),
+            worker_version: env::var("WORKER_VERSION")
+                .unwrap_or_else(|_| "dev".to_string()),
+            worker_token: env::var("WORKER_TOKEN").ok(),
         })
     }
-}
-
-impl Config {
+    
+    // Alias for compatibility if needed
     pub fn load() -> Self {
-        Self {
-            controller_url: env::var("CONTROLLER_URL")
-                .expect("CONTROLLER_URL not set"),
-            max_concurrency: env::var("MAX_CONCURRENCY")
-                .unwrap_or("100".into())
-                .parse().unwrap(),
-            heartbeat_interval_secs: env::var("HEARTBEAT_INTERVAL")
-                .unwrap_or("5".into())
-                .parse().unwrap(),
-            request_timeout_secs: env::var("REQUEST_TIMEOUT")
-                .unwrap_or("10".into())
-                .parse().unwrap(),
-            worker_version: env::var("WORKER_VERSION")
-                .unwrap_or("dev".into()),
-        }
+        Self::from_env().expect("Failed to load configuration")
     }
 }

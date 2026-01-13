@@ -2,57 +2,30 @@
 use crate::config::Config;
 use crate::http_client::HttpClientManager;
 use crate::metrics::MetricsCollector;
-use crate::models::{WorkerTask, WorkerResult, WorkerHeartbeat, WorkerStatus, RequestMetric};
+use crate::models::{WorkerTask, WorkerResult, WorkerHeartbeat, WorkerStatus};
 use anyhow::Result;
 use redis::AsyncCommands;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::time::Duration;
 use tokio::sync::Semaphore;
 use tokio::time::sleep;
 use tracing::{info, warn, error, debug};
 use uuid::Uuid;
 use chrono::Utc;
 
-use crate::{
-    circuit_breaker::CircuitBreaker,
-    rate_limiter,
-    tenant,
-};
+use crate::circuit_breaker::CircuitBreaker;
+use crate::rate_limiter;
+use crate::tenant;
 
-use std::sync::Mutex;
-
-static ACTIVE: Mutex<usize> = Mutex::new(0);
-
-pub fn active_tasks() -> usize {
-    *ACTIVE.lock().unwrap()
-}
+static SHUTDOWN_FLAG: AtomicBool = AtomicBool::new(false);
 
 pub fn stop_accepting() {
-    *ACTIVE.lock().unwrap() = 0;
+    SHUTDOWN_FLAG.store(true, Ordering::SeqCst);
+    info!("Worker received shutdown signal, stopping acceptance...");
 }
 
-pub async fn execute(task: crate::models::WorkerTask) {
-    tenant::set_org(task.org.clone());
-
-    let mut breaker = CircuitBreaker::new();
-
-    if !breaker.allow() {
-        return;
-    }
-
-    let start = std::time::Instant::now();
-    let res = crate::http_client::send(&task).await;
-
-    let latency = start.elapsed().as_millis() as u64;
-
-    match res {
-        Ok(status) => {
-            breaker.record_success();
-            rate_limiter::adjust(latency);
-            crate::metrics::emit(latency, status, task.org);
-        }
-        Err(_) => breaker.record_failure(),
-    }
+pub fn is_shutting_down() -> bool {
+    SHUTDOWN_FLAG.load(Ordering::SeqCst)
 }
 
 pub struct Worker {
@@ -62,6 +35,7 @@ pub struct Worker {
     http_client: Arc<HttpClientManager>,
     metrics_collector: Arc<MetricsCollector>,
     requests_processed: Arc<std::sync::atomic::AtomicU64>,
+    active_tasks: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl Worker {
@@ -71,6 +45,7 @@ impl Worker {
         let http_client = Arc::new(HttpClientManager::new(config.clone())?);
         let metrics_collector = Arc::new(MetricsCollector::new());
         let requests_processed = Arc::new(std::sync::atomic::AtomicU64::new(0));
+        let active_tasks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         
         info!("Worker {} initialized", worker_id);
         
@@ -81,6 +56,7 @@ impl Worker {
             http_client,
             metrics_collector,
             requests_processed,
+            active_tasks,
         })
     }
     
@@ -95,7 +71,7 @@ impl Worker {
         let heartbeat_handle = self.start_heartbeat();
         
         // Main work loop
-        loop {
+        while !is_shutting_down() {
             match self.process_task().await {
                 Ok(true) => {
                     debug!("Task processed successfully");
@@ -112,18 +88,17 @@ impl Worker {
             }
         }
         
-        // This is unreachable but required for type checking
-        #[allow(unreachable_code)]
-        {
-            heartbeat_handle.abort();
-            Ok(())
-        }
+        info!("Worker {} shutdown complete", self.worker_id);
+        // Abort heartbeat on exit
+        heartbeat_handle.abort();
+        Ok(())
     }
     
     fn start_heartbeat(&self) -> tokio::task::JoinHandle<()> {
         let worker_id = self.worker_id.clone();
         let redis_client = self.redis_client.clone();
         let requests_processed = Arc::clone(&self.requests_processed);
+        let active_tasks = Arc::clone(&self.active_tasks);
         let heartbeat_interval = self.config.heartbeat_interval_secs;
         let heartbeat_key = self.config.heartbeat_key.clone();
         
@@ -133,6 +108,7 @@ impl Worker {
                     &worker_id,
                     &redis_client,
                     &requests_processed,
+                    &active_tasks,
                     &heartbeat_key,
                 ).await {
                     Ok(_) => debug!("Heartbeat sent"),
@@ -148,6 +124,7 @@ impl Worker {
         worker_id: &str,
         redis_client: &redis::Client,
         requests_processed: &Arc<std::sync::atomic::AtomicU64>,
+        active_tasks: &Arc<std::sync::atomic::AtomicUsize>,
         heartbeat_key: &str,
     ) -> Result<()> {
         let mut conn = redis_client.get_async_connection().await?;
@@ -155,9 +132,12 @@ impl Worker {
         let heartbeat = WorkerHeartbeat {
             worker_id: worker_id.to_string(),
             timestamp: Utc::now(),
-            status: WorkerStatus::Idle,
+            status: if is_shutting_down() { WorkerStatus::Draining } else { WorkerStatus::Idle },
             current_task_id: None,
-            requests_processed: requests_processed.load(std::sync::atomic::Ordering::Relaxed),
+            requests_processed: requests_processed.load(Ordering::Relaxed),
+            cpu: 0.0, // TODO: Implement actual CPU monitoring
+            memory_mb: 0, // TODO: Implement actual memory monitoring
+            active_tasks: active_tasks.load(Ordering::Relaxed),
         };
         
         let key = format!("{}:{}", heartbeat_key, worker_id);
@@ -181,9 +161,16 @@ impl Worker {
         let task: WorkerTask = serde_json::from_str(&task_json.unwrap())?;
         info!("Picked up task: {} (RPS: {}, Duration: {}s)", 
             task.task_id, task.rps, task.duration_seconds);
+            
+        // Set tenant context
+        tenant::set_org(task.org.clone());
+        
+        self.active_tasks.fetch_add(1, Ordering::SeqCst);
         
         // Execute the load test
         let results = self.execute_load_test(task).await?;
+        
+        self.active_tasks.fetch_sub(1, Ordering::SeqCst);
         
         // Send results back
         self.send_results(results).await?;
@@ -197,7 +184,7 @@ impl Worker {
         
         info!("Starting load test: {} RPS for {} seconds", task.rps, task.duration_seconds);
         
-        let start_time = Instant::now();
+        let start_time = std::time::Instant::now();
         let mut results = Vec::new();
         
         // Rate limiter
@@ -209,6 +196,10 @@ impl Worker {
         let mut tick_interval = tokio::time::interval(interval);
         
         while start_time.elapsed() < duration {
+            if is_shutting_down() {
+                break;
+            }
+            
             tick_interval.tick().await;
             
             let permit = match semaphore.clone().try_acquire_owned() {
@@ -227,6 +218,9 @@ impl Worker {
                 metrics_collector.record(&metric);
                 requests_processed.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 
+                // Adjust rate limiter
+                rate_limiter::adjust(metric.latency_ms);
+                
                 drop(permit);
             });
             
@@ -238,7 +232,7 @@ impl Worker {
             }
         }
         
-        // Wait for remaining requests to complete
+        // Wait for remaining requests to complete (simple delay)
         sleep(Duration::from_secs(2)).await;
         
         // Report remaining stats

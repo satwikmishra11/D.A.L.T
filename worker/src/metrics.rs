@@ -3,6 +3,7 @@ use crate::models::RequestMetric;
 use std::sync::{Arc, Mutex};
 use serde::Serialize;
 use uuid::Uuid;
+use hdrhistogram::Histogram;
 
 #[derive(Serialize)]
 pub struct MetricEvent {
@@ -22,7 +23,7 @@ pub fn new_metric(latency: u64, status: u16, org: String) -> MetricEvent {
 }
 
 pub struct MetricsCollector {
-    latencies: Arc<Mutex<Vec<u64>>>,
+    histogram: Arc<Mutex<Histogram<u64>>>,
     success_count: Arc<Mutex<u32>>,
     error_count: Arc<Mutex<u32>>,
     total_count: Arc<Mutex<u32>>,
@@ -31,7 +32,8 @@ pub struct MetricsCollector {
 impl MetricsCollector {
     pub fn new() -> Self {
         Self {
-            latencies: Arc::new(Mutex::new(Vec::new())),
+            // Track latencies from 1ms to 1 hour (3,600,000ms) with 3 significant figures
+            histogram: Arc::new(Mutex::new(Histogram::<u64>::new_with_bounds(1, 60 * 60 * 1000, 3).unwrap())),
             success_count: Arc::new(Mutex::new(0)),
             error_count: Arc::new(Mutex::new(0)),
             total_count: Arc::new(Mutex::new(0)),
@@ -39,8 +41,9 @@ impl MetricsCollector {
     }
     
     pub fn record(&self, metric: &RequestMetric) {
-        let mut latencies = self.latencies.lock().unwrap();
-        latencies.push(metric.latency_ms);
+        let mut hist = self.histogram.lock().unwrap();
+        // Record latency, clamped to min 1ms for histogram
+        let _ = hist.record(metric.latency_ms.max(1));
         
         let mut total = self.total_count.lock().unwrap();
         *total += 1;
@@ -59,27 +62,31 @@ impl MetricsCollector {
         let success = *self.success_count.lock().unwrap();
         let errors = *self.error_count.lock().unwrap();
         
-        let latencies = self.latencies.lock().unwrap();
-        let avg = if !latencies.is_empty() {
-            latencies.iter().sum::<u64>() as f64 / latencies.len() as f64
-        } else {
-            0.0
-        };
+        let hist = self.histogram.lock().unwrap();
         
-        let p95 = percentile(&latencies, 95.0);
-        let p99 = percentile(&latencies, 99.0);
+        let avg = hist.mean();
+        let p95 = hist.value_at_quantile(0.95) as f64;
+        let p99 = hist.value_at_quantile(0.99) as f64;
         
         (total, success, errors, avg, p95, p99)
     }
     
     pub fn reset(&self) {
-        self.latencies.lock().unwrap().clear();
+        let mut hist = self.histogram.lock().unwrap();
+        hist.reset();
+        
         *self.success_count.lock().unwrap() = 0;
         *self.error_count.lock().unwrap() = 0;
         *self.total_count.lock().unwrap() = 0;
     }
+
+    pub fn total_count(&self) -> u32 {
+        *self.total_count.lock().unwrap()
+    }
 }
 
+// Deprecated: Internal percentile function no longer needed with HdrHistogram
+#[allow(dead_code)]
 fn percentile(values: &[u64], p: f64) -> f64 {
     if values.is_empty() {
         return 0.0;
@@ -92,4 +99,11 @@ fn percentile(values: &[u64], p: f64) -> f64 {
     let index = index.min(sorted.len() - 1);
     
     sorted[index] as f64
+}
+
+// Helper to emit metrics (compatibility wrapper)
+pub fn emit(latency: u64, status: u16, org: String) {
+    // This function seems to be used as a fire-and-forget logger/emitter in some contexts.
+    // For now, we'll just log it or it could be hooked up to an external system.
+    tracing::debug!("Metric emitted: latency={}ms status={} org={}", latency, status, org);
 }
