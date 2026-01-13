@@ -1,16 +1,37 @@
 package observability
 
-import "sync/atomic"
+import (
+	"net/http"
 
-var (
-	requestsTotal atomic.Int64
-	requestsDenied atomic.Int64
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func IncTotal() {
-	requestsTotal.Add(1)
+var (
+	RequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "admission_requests_total",
+			Help: "Total number of admission requests",
+		},
+		[]string{"method", "status"},
+	)
+
+	RequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "admission_request_duration_seconds",
+			Help:    "Duration of admission requests",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(RequestsTotal)
+	prometheus.MustRegister(RequestDuration)
 }
 
-func IncDenied() {
-	requestsDenied.Add(1)
+// Handler returns the HTTP handler for Prometheus metrics
+func Handler() http.Handler {
+	return promhttp.Handler()
 }
