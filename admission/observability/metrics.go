@@ -24,11 +24,20 @@ var (
 		},
 		[]string{"method"},
 	)
+	
+	PolicyDeniedTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "admission_policy_denied_total",
+			Help: "Total number of requests denied by policy/limits",
+		},
+		[]string{"reason"},
+	)
 )
 
 func init() {
 	prometheus.MustRegister(RequestsTotal)
 	prometheus.MustRegister(RequestDuration)
+	prometheus.MustRegister(PolicyDeniedTotal)
 }
 
 // Handler returns the HTTP handler for Prometheus metrics

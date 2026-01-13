@@ -9,7 +9,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	_ "net/http/pprof" // Profiling
 
 	grpcserver "admission/grpc"
 	"admission/config"
@@ -47,7 +48,6 @@ func loadTLSConfig(cfg *config.Config) (credentials.TransportCredentials, error)
 		MinVersion:   tls.VersionTLS12,
 	}
 
-	// client auth mode
 	switch cfg.TLS.ClientAuth {
 	case "NoClientCert":
 		tlsCfg.ClientAuth = tls.NoClientCert
@@ -69,29 +69,23 @@ func main() {
 		zap.String("env", cfg.Environment),
 	)
 
-	// Create Redis-backed store
 	store := state.NewRedis(cfg.RedisAddr)
-	// Wait for Redis readiness
 	lifecycle.WaitForRedis(store)
 
-	// Start Observability/Metrics server (on HTTP)
+	// Observability Server (Metrics + Pprof)
 	go func() {
-		mux := http.NewServeMux()
+		// Default mux has pprof registered
+		mux := http.DefaultServeMux 
 		mux.Handle("/metrics", observability.Handler())
-		// Start HTTPServer handler if separate or use shared mux
-		// Assuming httpserver.Start() starts its own thing or we integrate here.
-		// For simplicity, let's assume metrics run on admin port often distinct from main HTTP.
-		// But here main.go originally called httpserver.Start() separately.
-		observability.Info("Metrics server listening", zap.String("port", "9091")) // assuming 9091 for metrics
+		
+		observability.Info("Observability server listening", zap.String("port", "9091"))
 		if err := http.ListenAndServe(":9091", mux); err != nil {
-			observability.Error("Metrics server failed", zap.Error(err))
+			observability.Error("Observability server failed", zap.Error(err))
 		}
 	}()
 
-	// Start Business Logic HTTP endpoints
-	httpserver.Start() // Assuming this starts on cfg.HttpPort
+	httpserver.Start()
 
-	// gRPC server setup
 	lis, err := net.Listen("tcp", ":"+cfg.GrpcPort)
 	if err != nil {
 		observability.Error("Failed to listen for gRPC", zap.Error(err))
@@ -101,7 +95,6 @@ func main() {
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc.UnaryInterceptor(grpcserver.UnaryInterceptor()))
 
-	// Enable TLS if configured
 	if cfg.TLS.Enabled {
 		creds, err := loadTLSConfig(cfg)
 		if err != nil {
@@ -112,16 +105,16 @@ func main() {
 	}
 
 	grpcSrv := grpc.NewServer(opts...)
+	
+	// Create implementation
+	srv := grpcserver.NewServer(store)
 
-	// register server
-	pb.RegisterAdmissionServiceServer(
-		grpcSrv,
-		grpcserver.NewServer(store),
-	)
+	// Register services
+	pb.RegisterAdmissionServiceServer(grpcSrv, srv)
+	srv.RegisterHealthServer(grpcSrv)
 
 	observability.Info("Admission gRPC service running", zap.String("port", cfg.GrpcPort), zap.Bool("tls", cfg.TLS.Enabled))
 
-	// Serve asynchronously
 	go func() {
 		if err := grpcSrv.Serve(lis); err != nil {
 			observability.Error("gRPC serve failed", zap.Error(err))
@@ -129,7 +122,6 @@ func main() {
 		}
 	}()
 
-	// Graceful shutdown
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	
@@ -137,7 +129,7 @@ func main() {
 	observability.Info("Shutting down admission service...")
 	
 	grpcSrv.GracefulStop()
-	lifecycle.Wait() // Ensure other components stop if needed
+	lifecycle.Wait()
 	
 	observability.Info("Shutdown complete")
 }

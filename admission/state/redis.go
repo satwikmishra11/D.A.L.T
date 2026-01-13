@@ -30,6 +30,10 @@ func (r *RedisStore) Set(ctx context.Context, key, value string) {
 	r.rdb.Set(ctx, key, value, 0)
 }
 
+func (r *RedisStore) Client() *redis.Client {
+	return r.rdb
+}
+
 /*
 Distributed semaphore using INCR/DECR
 */
