@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loadtest.model.WorkerTask;
 import com.loadtest.model.WorkerResult;
 import com.loadtest.model.WorkerHeartbeat;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,7 @@ public class RedisQueueService {
     
     // ========== Task Queue Operations ==========
     
+    @Retry(name = "redis")
     public void publishTask(WorkerTask task) {
         try {
             String json = objectMapper.writeValueAsString(task);
@@ -55,6 +57,7 @@ public class RedisQueueService {
     
     // ========== Result Queue Operations ==========
     
+    @Retry(name = "redis")
     public WorkerResult pollResult(Duration timeout) {
         try {
             String json = redisTemplate.opsForList()
@@ -136,8 +139,6 @@ public class RedisQueueService {
     public int getActiveWorkerCount() {
         return getActiveWorkerIds().size();
     }
-    
-    String queueKey = "org:" + orgId + ":execution:" + executionId;
 
     // ========== Cleanup Operations ==========
     

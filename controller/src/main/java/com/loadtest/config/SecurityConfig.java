@@ -5,12 +5,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-
-.addFilterBefore(
-    tenantResolutionFilter,
-    JwtSecurityContextFilter.class
-)
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableMethodSecurity
@@ -27,14 +24,16 @@ public class SecurityConfig {
             throws Exception {
 
         http.csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> 
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/actuator/**", "/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(
                 jwtFilter,
-                org.springframework.security.web.authentication.
-                        UsernamePasswordAuthenticationFilter.class
+                UsernamePasswordAuthenticationFilter.class
             );
 
         return http.build();

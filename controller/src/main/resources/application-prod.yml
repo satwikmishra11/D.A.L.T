@@ -1,40 +1,69 @@
 spring:
-profiles:
-active: production
-data:
-mongodb:
-uri: ${MONGODB_URI}
-redis:
-host: ${REDIS_HOST}
-port: ${REDIS_PORT}
-password: ${REDIS_PASSWORD}
-server:
-port: 8080
-compression:
-enabled: true
-mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  config:
+    activate:
+      on-profile: production
+      
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+
+  server:
+    port: 8080
+    compression:
+      enabled: true
+      mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
 loadtest:
-cors:
-allowed-origins: ${ALLOWED_ORIGINS}
-supabase:
-url: ${SUPABASE_URL}
-jwt-secret: ${SUPABASE_JWT_SECRET}
-logging:
-level:
-root: INFO
-com.loadtest: INFO
-pattern:
-console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-file:
-name: /var/log/loadtest/application.log
-max-size: 10MB
-max-history: 30
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS}
+  supabase:
+    url: ${SUPABASE_URL}
+    jwt-secret: ${SUPABASE_JWT_SECRET}
+
+# Resilience in Production
+resilience4j:
+  retry:
+    instances:
+      redis:
+        max-retry-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+  ratelimiter:
+    instances:
+      auth:
+        limitForPeriod: 5
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0ms
+
+# Observability in Production
 management:
-endpoints:
-web:
-exposure:
-include: health,info,metrics,prometheus
-metrics:
-export:
-prometheus:
-enabled: true
+  tracing:
+    sampling:
+      probability: 0.1
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://zipkin:9411/api/v2/spans}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.loadtest: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file:
+      name: /var/log/loadtest/application.log
+      max-size: 10MB
+      max-history: 30

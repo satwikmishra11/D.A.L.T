@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: load-test-controller
+  
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/loadtest?minPoolSize=5&maxPoolSize=50
+      database: loadtest
+      auto-index-creation: true
+    
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+  
+  websocket:
+    allowed-origins: "*"
+
+server:
+  port: 8080
+
+# Resilience4j Configuration
+resilience4j:
+  retry:
+    instances:
+      redis:
+        max-retry-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+  ratelimiter:
+    instances:
+      auth:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0ms
+
+# Observability Configuration
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: "http://localhost:9411/api/v2/spans"
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+# Custom Application Properties
+loadtest:
+  redis:
+    queue:
+      tasks: "loadtest:tasks"
+      results: "loadtest:results"
+      heartbeat: "loadtest:heartbeat"
+  
+  worker:
+    timeout: 30000  # 30 seconds
+    heartbeat-interval: 5000  # 5 seconds
+  
+  supabase:
+    url: ${SUPABASE_URL:https://your-project.supabase.co}
+    jwt-secret: ${SUPABASE_JWT_SECRET:your-jwt-secret}
+
+logging:
+  level:
+    com.loadtest: DEBUG
+    org.springframework.data.mongodb: INFO
+    io.github.resilience4j: DEBUG
+
+security:
+  jwt:
+    secret: loadtest_super_secret_key_2025
+    expiration-ms: 86400000
