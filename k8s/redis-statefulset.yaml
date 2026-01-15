@@ -1,23 +1,25 @@
-# ========== k8s/redis-deployment.yaml ==========
 apiVersion: v1
 kind: Service
 metadata:
   name: redis-service
   namespace: loadtest
-spec:
-  selector:
+  labels:
     app: redis
+spec:
   ports:
     - port: 6379
       targetPort: 6379
+  selector:
+    app: redis
 
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: redis
   namespace: loadtest
 spec:
+  serviceName: "redis-service"
   replicas: 1
   selector:
     matchLabels:
@@ -27,6 +29,8 @@ spec:
       labels:
         app: redis
     spec:
+      securityContext:
+        fsGroup: 2000
       containers:
       - name: redis
         image: redis:7-alpine
@@ -39,27 +43,30 @@ spec:
         resources:
           requests:
             memory: "512Mi"
-            cpu: "500m"
+            cpu: "250m"
           limits:
             memory: "1Gi"
             cpu: "1000m"
-      volumes:
-      - name: redis-data
-        persistentVolumeClaim:
-          claimName: redis-pvc
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: redis-pvc
-  namespace: loadtest
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: fast-ssd
-
----
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "fast-ssd"
+      resources:
+        requests:
+          storage: 10Gi

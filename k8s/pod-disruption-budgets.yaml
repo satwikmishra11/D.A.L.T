@@ -1,0 +1,58 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: controller-pdb
+  namespace: loadtest
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: controller
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: worker-pdb
+  namespace: loadtest
+spec:
+  minAvailable: 50%
+  selector:
+    matchLabels:
+      app: worker
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mongodb-pdb
+  namespace: loadtest
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: mongodb
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: loadtest
+spec:
+  minAvailable: 0  # Single replica Redis usually implies downtime on upgrade unless HA
+  selector:
+    matchLabels:
+      app: redis
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+  namespace: loadtest
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: frontend
