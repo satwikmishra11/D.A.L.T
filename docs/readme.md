@@ -1,4 +1,4 @@
-# 🚀 Distributed API Load Testing & Observability Platform
+#  Distributed API Load Testing & Observability Platform
 
 A production-grade, horizontally scalable load testing platform that generates 100K+ RPS with real-time observability.
 
@@ -8,7 +8,7 @@ A production-grade, horizontally scalable load testing platform that generates 1
 ![Rust](https://img.shields.io/badge/Rust-1.75-red)
 ![React](https://img.shields.io/badge/React-18-blue)
 
-## 📋 Table of Contents
+## Table of Contents
 - [Features](#features)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -18,7 +18,7 @@ A production-grade, horizontally scalable load testing platform that generates 1
 - [Development](#development)
 - [Deployment](#deployment)
 
-## ✨ Features
+## Features
 
 ### Core Capabilities
 - **Distributed Load Generation**: Horizontally scalable Rust workers
@@ -37,7 +37,7 @@ Burst:     ████▁███▁████▁█████ (Periodic s
 Spike:     ████████████████▇▁▁ (Single large spike)
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -87,7 +87,7 @@ Spike:     ████████████████▇▁▁ (Single lar
 6. WebSocket streams → Dashboard (live updates)
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
@@ -107,7 +107,7 @@ Spike:     ████████████████▇▁▁ (Single lar
 - **Spring Boot**: Rich ecosystem, production-ready
 - **React**: Component reusability, real-time updates
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 ```bash
@@ -234,7 +234,7 @@ curl http://localhost:8080/api/v1/scenarios/{id}/stats/realtime?lastNSeconds=30
 }
 ```
 
-## 📊 Performance Benchmarks
+## Performance Benchmarks
 
 ### Throughput Test Results
 
@@ -264,7 +264,7 @@ P95:  125ms ██████████████████████�
 P99:  280ms ████████████████████████████████████████████████████████████
 ```
 
-## 🔧 Development
+##  Development
 
 ### Project Structure
 
@@ -331,7 +331,7 @@ cd worker && cargo test
 ./test-platform.sh
 ```
 
-## 🚢 Deployment
+## Deployment
 
 ### Docker Compose (Development)
 
@@ -381,7 +381,7 @@ aws ecs update-service --cluster loadtest \
   --service controller --force-new-deployment
 ```
 
-## 📈 Monitoring
+##  Monitoring
 
 ### Grafana Dashboard
 
@@ -399,7 +399,7 @@ Controller exposes metrics at `/actuator/prometheus`:
 - `loadtest_errors_total`
 - `loadtest_active_workers`
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
@@ -407,11 +407,11 @@ Controller exposes metrics at `/actuator/prometheus`:
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
 
-## 📝 License
+##  License
 
 This project is licensed under the MIT License - see LICENSE file.
 
-## 🎓 Resume Bullet Point
+##  Resume Bullet Point
 
 ```
 Implemented a distributed API load-testing platform with Rust/Go workers 
@@ -419,19 +419,19 @@ and Spring Boot control plane, generating 100K+ RPS and providing real-time
 observability dashboards for latency and error analysis.
 ```
 
-## 🔗 Links
+##  Links
 
 - Documentation: [docs/](./docs)
 - API Reference: [API.md](./API.md)
 - Contributing: [CONTRIBUTING.md](./CONTRIBUTING.md)
 - Changelog: [CHANGELOG.md](./CHANGELOG.md)
 
-## 📧 Support
+##  Support
 
-- GitHub Issues: [Create Issue](https://github.com/yourusername/loadtest-platform/issues)
+- GitHub Issues: [Create Issue](https://github.com/satwikmishra11/loadtest-platform/issues)
 - Email: support@loadtest.dev
 - Discord: [Join Community](https://discord.gg/loadtest)
 
 ---
 
-Built with ❤️ by developers, for developers
+Built with ❤️ by Satwik, for developers
