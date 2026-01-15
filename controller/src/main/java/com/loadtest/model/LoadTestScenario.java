@@ -22,11 +22,17 @@ public class LoadTestScenario {
     
     private LoadProfile loadProfile;
     private int durationSeconds;
-    private int numWorkers;
+    private int numWorkers; // parallelUsers
     
     private ScenarioStatus status;
+    private ApprovalStatus approvalStatus;
+    
     private int version;
     private String configJson; // For versioning/snapshots
+    
+    private String lastExecutionId;
+    private Instant lastExecutedAt;
+    private boolean running;
     
     private Instant createdAt;
     private Instant startedAt;

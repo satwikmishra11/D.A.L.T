@@ -23,6 +23,9 @@ loadtest:
   supabase:
     url: ${SUPABASE_URL}
     jwt-secret: ${SUPABASE_JWT_SECRET}
+  admission:
+    host: ${ADMISSION_HOST:admission}
+    port: ${ADMISSION_PORT:9090}
 
 # Resilience in Production
 resilience4j:

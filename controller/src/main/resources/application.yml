@@ -56,6 +56,10 @@ loadtest:
       results: "loadtest:results"
       heartbeat: "loadtest:heartbeat"
   
+  admission:
+    host: localhost
+    port: 9090
+
   worker:
     timeout: 30000  # 30 seconds
     heartbeat-interval: 5000  # 5 seconds

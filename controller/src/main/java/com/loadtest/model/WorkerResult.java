@@ -11,6 +11,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class WorkerResult {
+    private String scenarioId; // Added for context
     private String taskId;
     private String workerId;
     private Instant timestamp;
