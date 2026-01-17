@@ -11,6 +11,9 @@
     "react-router-dom": "^6.20.0",
     "recharts": "^2.10.3",
     "lucide-react": "^0.300.0",
+    "framer-motion": "^10.16.5",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.1.0",
     "axios": "^1.6.2",
     "@stomp/stompjs": "^7.0.0",
     "sockjs-client": "^1.6.1"

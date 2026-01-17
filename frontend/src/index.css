@@ -1,104 +1,35 @@
-// ========== src/index.css (Additional styles) ==========
-/* Additional utility classes */
-@layer utilities {
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-aws-orange text-white px-4 py-2 rounded-md font-medium hover:bg-yellow-500 transition-colors shadow-sm;
   }
   
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  .btn-secondary {
+    @apply bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium hover:bg-gray-50 transition-colors;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-aws-hover transition-all rounded-md cursor-pointer;
   }
   
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  .nav-item.active {
+    @apply text-aws-orange bg-aws-hover border-l-4 border-aws-orange;
   }
-  
-  .gradient-text {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+
+  .card {
+    @apply bg-white rounded-lg shadow-card p-6 border border-gray-100;
   }
-}
 
-/* Custom animations */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+  .status-badge {
+    @apply px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
-/* Loading spinner */
-.spinner {
-  border: 3px solid rgba(59, 130, 246, 0.1);
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Tooltip styles */
-.recharts-tooltip-wrapper {
-  outline: none;
-}
-
-/* Card hover effects */
-.stat-card {
-  transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Status badges */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Button loading state */
-.btn-loading {
-  position: relative;
-  color: transparent;
-}
-
-.btn-loading::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  top: 50%;
-  left: 50%;
-  margin-left: -8px;
-  margin-top: -8px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  border-top-color: transparent;
-  animation: spin 0.6s linear infinite;
 }
