@@ -1,75 +1,50 @@
-// ========== Cargo.toml - Enhanced Dependencies ==========
-/*
 [package]
 name = "loadtest-worker"
 version = "2.0.0"
 edition = "2021"
 
 [dependencies]
-# Async runtime
+# Async Runtime
 tokio = { version = "1.35", features = ["full"] }
-reqwest = { version = "0.11", features = ["json", "gzip", "brotli"] }
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.6", features = ["v4", "serde"] }
-anyhow = "1.0"
-thiserror = "1.0"
-governor = "0.6"
-nonzero_ext = "0.3"
-hdrhistogram = "7.5"
-config = "0.13"
-async-trait = "0.1"
-tokio-metrics = "0.3"
-prometheus = "0.13"
-sysinfo = "0.30"
-env_logger = "0.11"
 
-[profile.release]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-strip = true
-*/
+# HTTP Client
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 
-# HTTP client
-reqwest = { version = "0.11", features = ["json"] }
-
-# Redis client
+# Redis Client
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Logging
+# Logging & Observability
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
 
-# Time utilities
+# Time & ID
 chrono = { version = "0.4", features = ["serde"] }
-
-# UUID generation
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
-# Error handling
+# Error Handling
 anyhow = "1.0"
 thiserror = "1.0"
 
-# Rate limiting
+# Rate Limiting & Concurrency
 governor = "0.6"
 nonzero_ext = "0.3"
+async-trait = "0.1"
 
-# Statistics
+# Metrics & Stats
 hdrhistogram = "7.5"
+sysinfo = "0.30"
 
 # Configuration
 config = "0.13"
+dotenv = "0.15"
 
 [profile.release]
 opt-level = 3
 lto = true
 codegen-units = 1
+panic = "abort"

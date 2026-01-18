@@ -1,102 +1,72 @@
-// ========== src/config.rs ==========
-use serde::{Deserialize, Serialize};
+use config::{Config, ConfigError, Environment, File};
+use serde::Deserialize;
 use std::env;
-use anyhow::{Result, Context};
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Config {
-    pub redis_url: String,
+#[derive(Debug, Deserialize, Clone)]
+pub struct Settings {
+    pub worker_id: String,
+    pub redis: RedisConfig,
+    pub http: HttpConfig,
+    pub logging: LoggingConfig,
+    pub limits: LimitsConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct RedisConfig {
+    pub url: String,
     pub task_queue: String,
     pub result_queue: String,
     pub heartbeat_key: String,
-    pub heartbeat_interval_secs: u64,
-    pub batch_report_size: u32,
-    pub max_concurrent_requests: usize,
-    pub request_timeout_secs: u64,
-    pub connection_timeout_secs: u64,
-    pub pool_max_idle_per_host: usize,
-    pub retry_enabled: bool,
-    pub retry_max_attempts: u32,
-    pub retry_delay_ms: u64,
-    pub enable_compression: bool,
-    pub enable_http2: bool,
-    pub controller_url: String,
-    pub max_concurrency: usize,
-    pub worker_version: String,
-    pub worker_token: Option<String>,
 }
 
-impl Config {
-    pub fn from_env() -> Result<Self> {
-        Ok(Self {
-            redis_url: env::var("REDIS_URL")
-                .unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string()),
-            task_queue: env::var("TASK_QUEUE")
-                .unwrap_or_else(|_| "loadtest:tasks".to_string()),
-            result_queue: env::var("RESULT_QUEUE")
-                .unwrap_or_else(|_| "loadtest:results".to_string()),
-            heartbeat_key: env::var("HEARTBEAT_KEY")
-                .unwrap_or_else(|_| "loadtest:heartbeat".to_string()),
-            heartbeat_interval_secs: env::var("HEARTBEAT_INTERVAL_SECS")
-                .or_else(|_| env::var("HEARTBEAT_INTERVAL"))
-                .unwrap_or_else(|_| "5".to_string())
-                .parse()
-                .context("Invalid heartbeat interval")?,
-            batch_report_size: env::var("BATCH_REPORT_SIZE")
-                .unwrap_or_else(|_| "100".to_string())
-                .parse()
-                .context("Invalid batch report size")?,
-            max_concurrent_requests: env::var("MAX_CONCURRENT_REQUESTS")
-                .unwrap_or_else(|_| "1000".to_string())
-                .parse()
-                .context("Invalid max concurrent requests")?,
-            request_timeout_secs: env::var("REQUEST_TIMEOUT_SECS")
-                .or_else(|_| env::var("REQUEST_TIMEOUT"))
-                .unwrap_or_else(|_| "30".to_string())
-                .parse()
-                .context("Invalid request timeout")?,
-            connection_timeout_secs: env::var("CONNECTION_TIMEOUT_SECS")
-                .unwrap_or_else(|_| "10".to_string())
-                .parse()
-                .context("Invalid connection timeout")?,
-            pool_max_idle_per_host: env::var("POOL_MAX_IDLE_PER_HOST")
-                .unwrap_or_else(|_| "100".to_string())
-                .parse()
-                .context("Invalid pool max idle")?,
-            retry_enabled: env::var("RETRY_ENABLED")
-                .unwrap_or_else(|_| "false".to_string())
-                .parse()
-                .unwrap_or(false),
-            retry_max_attempts: env::var("RETRY_MAX_ATTEMPTS")
-                .unwrap_or_else(|_| "3".to_string())
-                .parse()
-                .unwrap_or(3),
-            retry_delay_ms: env::var("RETRY_DELAY_MS")
-                .unwrap_or_else(|_| "1000".to_string())
-                .parse()
-                .unwrap_or(1000),
-            enable_compression: env::var("ENABLE_COMPRESSION")
-                .unwrap_or_else(|_| "true".to_string())
-                .parse()
-                .unwrap_or(true),
-            enable_http2: env::var("ENABLE_HTTP2")
-                .unwrap_or_else(|_| "true".to_string())
-                .parse()
-                .unwrap_or(true),
-            controller_url: env::var("CONTROLLER_URL")
-                .unwrap_or_else(|_| "http://localhost:8080".to_string()),
-            max_concurrency: env::var("MAX_CONCURRENCY")
-                .unwrap_or_else(|_| "100".to_string())
-                .parse()
-                .unwrap_or(100),
-            worker_version: env::var("WORKER_VERSION")
-                .unwrap_or_else(|_| "dev".to_string()),
-            worker_token: env::var("WORKER_TOKEN").ok(),
-        })
-    }
-    
-    // Alias for compatibility if needed
-    pub fn load() -> Self {
-        Self::from_env().expect("Failed to load configuration")
+#[derive(Debug, Deserialize, Clone)]
+pub struct HttpConfig {
+    pub timeout_seconds: u64,
+    pub max_idle_connections: usize,
+    pub connect_timeout_seconds: u64,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct LoggingConfig {
+    pub level: String,
+    pub json: bool,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct LimitsConfig {
+    pub max_concurrent_tasks: usize,
+    pub max_virtual_users: usize,
+    pub heartbeat_interval_seconds: u64,
+}
+
+impl Settings {
+    pub fn new() -> Result<Self, ConfigError> {
+        let run_mode = env::var("RUN_MODE").unwrap_or_else(|_| "development".into());
+
+        let s = Config::builder()
+            // Start with default settings
+            .set_default("worker_id", uuid::Uuid::new_v4().to_string())?
+            .set_default("redis.url", "redis://127.0.0.1:6379")?
+            .set_default("redis.task_queue", "loadtest:tasks")?
+            .set_default("redis.result_queue", "loadtest:results")?
+            .set_default("redis.heartbeat_key", "loadtest:heartbeat")?
+            
+            .set_default("http.timeout_seconds", 30)?
+            .set_default("http.max_idle_connections", 100)?
+            .set_default("http.connect_timeout_seconds", 5)?
+            
+            .set_default("logging.level", "info")?
+            .set_default("logging.json", false)?
+            
+            .set_default("limits.max_concurrent_tasks", 1)?
+            .set_default("limits.max_virtual_users", 5000)?
+            .set_default("limits.heartbeat_interval_seconds", 5)?
+
+            // Add environment variables (overrides)
+            // e.g. APP_REDIS__URL=...
+            .add_source(Environment::with_prefix("APP").separator("__"))
+            .build()?;
+
+        s.try_deserialize()
     }
 }
