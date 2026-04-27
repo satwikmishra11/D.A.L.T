@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Tag(name = "Scheduled Tests", description = "Manage scheduled load tests and cron jobs")
+@Slf4j
 public class ScheduledTestController {
     
     private final SchedulerService schedulerService;
@@ -29,6 +31,7 @@ public class ScheduledTestController {
             Authentication authentication) {
         
         String userId = (String) authentication.getPrincipal();
+        log.info("Creating new scheduled test for user: {}", userId);
         scheduledTest.setUserId(userId);
         
         ScheduledTest created = schedulerService.createScheduledTest(scheduledTest);
@@ -39,6 +42,7 @@ public class ScheduledTestController {
     @Operation(summary = "List Schedules", description = "Get all scheduled tests for the authenticated user")
     public ResponseEntity<List<ScheduledTest>> getSchedules(Authentication authentication) {
         String userId = (String) authentication.getPrincipal();
+        log.info("Fetching scheduled tests for user: {}", userId);
         List<ScheduledTest> schedules = schedulerService.getUserScheduledTests(userId);
         return ResponseEntity.ok(schedules);
     }
@@ -49,6 +53,7 @@ public class ScheduledTestController {
             @PathVariable String id,
             @Valid @RequestBody ScheduledTest updates) {
         
+        log.info("Updating scheduled test id: {}", id);
         schedulerService.updateScheduledTest(id, updates);
         return ResponseEntity.ok().build();
     }
@@ -56,6 +61,7 @@ public class ScheduledTestController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete Schedule", description = "Remove a test schedule")
     public ResponseEntity<Void> deleteSchedule(@PathVariable String id) {
+        log.info("Deleting scheduled test id: {}", id);
         schedulerService.deleteScheduledTest(id);
         return ResponseEntity.ok().build();
     }

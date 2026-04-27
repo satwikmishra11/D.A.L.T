@@ -5,7 +5,15 @@ import com.loadtest.dto.*;
 import com.loadtest.model.*;
 import com.loadtest.repository.*;
 import com.loadtest.service.*;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.Builder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +27,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/dashboard")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Tag(name = "Dashboard", description = "API for retrieving aggregated dashboard metrics and system health")
+@Slf4j
 public class DashboardController {
     
     private final ScenarioRepository scenarioRepository;
@@ -28,8 +38,17 @@ public class DashboardController {
     private final MetricsAggregationService metricsService;
     
     @GetMapping("/summary")
-    public ResponseEntity<DashboardSummary> getSummary(Authentication authentication) {
+    @Operation(summary = "Get Dashboard Summary", description = "Retrieves aggregated metrics for the current user's scenarios.")
+    @RateLimiter(name = "dashboard")
+    public ResponseEntity<DashboardSummary> getSummary(
+            Authentication authentication,
+            @Parameter(description = "Optional start date for filtering (ISO-8601)") 
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
+            @Parameter(description = "Optional end date for filtering (ISO-8601)") 
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant endDate) {
+        
         String userId = (String) authentication.getPrincipal();
+        log.info("Fetching dashboard summary for user: {}, startDate: {}, endDate: {}", userId, startDate, endDate);
         
         // Get all scenarios for user
         List<LoadTestScenario> scenarios = scenarioRepository.findByUserId(userId);
@@ -40,19 +59,25 @@ public class DashboardController {
                 .filter(s -> s.getStatus() == ScenarioStatus.RUNNING)
                 .count();
         
-        // Get today's completed scenarios
-        Instant startOfDay = Instant.now().truncatedTo(ChronoUnit.DAYS);
-        long completedToday = scenarios.stream()
+        // Use provided dates or default to today
+        Instant filterStart = startDate != null ? startDate : Instant.now().truncatedTo(ChronoUnit.DAYS);
+        Instant filterEnd = endDate != null ? endDate : Instant.now();
+        
+        long completedInPeriod = scenarios.stream()
                 .filter(s -> s.getStatus() == ScenarioStatus.COMPLETED)
-                .filter(s -> s.getCompletedAt() != null && s.getCompletedAt().isAfter(startOfDay))
+                .filter(s -> s.getCompletedAt() != null && 
+                        !s.getCompletedAt().isBefore(filterStart) && 
+                        !s.getCompletedAt().isAfter(filterEnd))
                 .count();
         
         // Worker stats
         int activeWorkers = queueService.getActiveWorkerCount();
         
-        // Calculate total requests today
-        long totalRequestsToday = scenarios.stream()
-                .filter(s -> s.getCompletedAt() != null && s.getCompletedAt().isAfter(startOfDay))
+        // Calculate total requests in period
+        long totalRequestsInPeriod = scenarios.stream()
+                .filter(s -> s.getCompletedAt() != null && 
+                        !s.getCompletedAt().isBefore(filterStart) && 
+                        !s.getCompletedAt().isAfter(filterEnd))
                 .mapToLong(s -> {
                     ScenarioStats stats = metricsService.getAggregatedStats(s.getId());
                     return stats.getTotalRequests();
@@ -62,7 +87,9 @@ public class DashboardController {
         // Calculate average success rate
         double avgSuccessRate = scenarios.stream()
                 .filter(s -> s.getStatus() == ScenarioStatus.COMPLETED)
-                .filter(s -> s.getCompletedAt() != null && s.getCompletedAt().isAfter(startOfDay))
+                .filter(s -> s.getCompletedAt() != null && 
+                        !s.getCompletedAt().isBefore(filterStart) && 
+                        !s.getCompletedAt().isAfter(filterEnd))
                 .mapToDouble(s -> {
                     ScenarioStats stats = metricsService.getAggregatedStats(s.getId());
                     return stats.getSuccessRate();
@@ -99,9 +126,9 @@ public class DashboardController {
         DashboardSummary summary = DashboardSummary.builder()
                 .totalScenarios(totalScenarios)
                 .activeScenarios(activeScenarios)
-                .completedToday(completedToday)
+                .completedToday(completedInPeriod) // Map to the period dynamically
                 .activeWorkers(activeWorkers)
-                .totalRequestsToday(totalRequestsToday)
+                .totalRequestsToday(totalRequestsInPeriod)
                 .avgSuccessRate(avgSuccessRate)
                 .activeAlerts(activeAlerts)
                 .recentScenarios(recentScenarios)
@@ -111,7 +138,10 @@ public class DashboardController {
     }
     
     @GetMapping("/system-health")
+    @Operation(summary = "Get System Health", description = "Retrieves current worker status and queue metrics.")
+    @RateLimiter(name = "dashboard")
     public ResponseEntity<SystemHealth> getSystemHealth() {
+        log.debug("Fetching system health metrics");
         int activeWorkers = queueService.getActiveWorkerCount();
         long taskQueueSize = queueService.getTaskQueueSize();
         long resultQueueSize = queueService.getResultQueueSize();
@@ -151,3 +181,4 @@ class SystemHealth {
     private List<WorkerMetrics> workerMetrics;
     private Instant timestamp;
 }
+

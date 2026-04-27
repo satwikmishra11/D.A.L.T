@@ -12,12 +12,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/scenarios/{id}/approval")
 @Tag(name = "Scenario Approval", description = "API for approving or rejecting load test scenarios")
+@Slf4j
 public class ScenarioApprovalController {
 
     private final ScenarioApprovalService service;
@@ -47,6 +49,8 @@ public class ScenarioApprovalController {
         // Fallback for actor if not provided in header (e.g., from SecurityContext)
         String actualActor = (actor != null && !actor.isEmpty()) ? actor : "system";
         
+        log.info("Processing approval transition for scenario id: {}, targetStatus: {}, actor: {}", id, request.getTargetStatus(), actualActor);
+
         LoadTestScenario scenario =
                 service.transition(
                         id,
