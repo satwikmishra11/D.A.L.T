@@ -6,13 +6,17 @@ import (
 )
 
 type Config struct {
-	GrpcPort     string
-	HttpPort     string
-	RedisAddr    string
-	MaxInflight  int64
-	RateLimit    int64
-	Environment  string
-	Version      string
+	GrpcPort        string
+	HttpPort        string
+	RedisAddr       string
+	RedisPoolSize   int
+	RedisDialTimeout int
+	RedisReadTimeout int
+	MaxInflight     int64
+	RateLimit       int64
+	Environment     string
+	Version         string
+	AuthTokenSecret string
 
 	TLS struct {
 		Enabled      bool
@@ -25,13 +29,17 @@ type Config struct {
 
 func Load() *Config {
 	cfg := &Config{
-		GrpcPort:    get("GRPC_PORT", "9090"),
-		HttpPort:    get("HTTP_PORT", "8081"),
-		RedisAddr:   must("REDIS_ADDR"),
-		MaxInflight: getInt("MAX_INFLIGHT", 500),
-		RateLimit:   getInt("RATE_LIMIT", 50),
-		Environment: get("ENV", "dev"),
-		Version:     get("VERSION", "unknown"),
+		GrpcPort:         get("GRPC_PORT", "9090"),
+		HttpPort:         get("HTTP_PORT", "8081"),
+		RedisAddr:        must("REDIS_ADDR"),
+		RedisPoolSize:    int(getInt("REDIS_POOL_SIZE", 100)),
+		RedisDialTimeout: int(getInt("REDIS_DIAL_TIMEOUT_MS", 1000)),
+		RedisReadTimeout: int(getInt("REDIS_READ_TIMEOUT_MS", 1000)),
+		MaxInflight:      getInt("MAX_INFLIGHT", 500),
+		RateLimit:        getInt("RATE_LIMIT", 100),
+		Environment:      get("ENV", "dev"),
+		Version:          get("VERSION", "unknown"),
+		AuthTokenSecret:  get("AUTH_TOKEN_SECRET", "default-dev-secret-change-me"),
 	}
 
 	// TLS settings

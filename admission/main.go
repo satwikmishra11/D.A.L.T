@@ -14,7 +14,7 @@ import (
 
 	grpcserver "admission/grpc"
 	"admission/config"
-	"admission/httpserver"
+	httpserver "admission/http"
 	"admission/lifecycle"
 	"admission/observability"
 	"admission/state"
@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"admission/auth"
 )
 
 func loadTLSConfig(cfg *config.Config) (credentials.TransportCredentials, error) {
@@ -69,7 +70,7 @@ func main() {
 		zap.String("env", cfg.Environment),
 	)
 
-	store := state.NewRedis(cfg.RedisAddr)
+	store := state.NewRedis(cfg)
 	lifecycle.WaitForRedis(store)
 
 	// Observability Server (Metrics + Pprof)
@@ -93,7 +94,10 @@ func main() {
 	}
 
 	var opts []grpc.ServerOption
-	opts = append(opts, grpc.UnaryInterceptor(grpcserver.UnaryInterceptor()))
+	opts = append(opts, grpc.ChainUnaryInterceptor(
+		auth.UnaryInterceptor(cfg.AuthTokenSecret),
+		grpcserver.UnaryInterceptor(),
+	))
 
 	if cfg.TLS.Enabled {
 		creds, err := loadTLSConfig(cfg)
@@ -107,7 +111,7 @@ func main() {
 	grpcSrv := grpc.NewServer(opts...)
 	
 	// Create implementation
-	srv := grpcserver.NewServer(store)
+	srv := grpcserver.NewServer(store, cfg)
 
 	// Register services
 	pb.RegisterAdmissionServiceServer(grpcSrv, srv)

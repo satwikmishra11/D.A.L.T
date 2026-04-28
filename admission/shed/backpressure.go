@@ -14,9 +14,9 @@ type Shedder struct {
 	store       state.Store // Kept if we want distributed coordination later
 }
 
-func New(store state.Store) *Shedder {
+func New(store state.Store, limit int64) *Shedder {
 	return &Shedder{
-		maxInflight: 500, // Should be config driven
+		maxInflight: limit,
 		store:       store,
 	}
 }
@@ -25,9 +25,11 @@ func New(store state.Store) *Shedder {
 // Returns true if allowed, false if rejected (load shedding).
 func (s *Shedder) Enter(ctx context.Context) bool {
 	current := s.inflight.Add(1)
+	observability.InflightRequests.Set(float64(current))
 	
 	if current > s.maxInflight {
 		s.inflight.Add(-1)
+		observability.InflightRequests.Set(float64(current - 1))
 		observability.Warn("Load shedding triggered", 
 			observability.Field("current_inflight", current),
 			observability.Field("limit", s.maxInflight),
@@ -38,7 +40,8 @@ func (s *Shedder) Enter(ctx context.Context) bool {
 }
 
 func (s *Shedder) Exit(ctx context.Context) {
-	s.inflight.Add(-1)
+	current := s.inflight.Add(-1)
+	observability.InflightRequests.Set(float64(current))
 }
 
 // SetLimit allows dynamic resizing of the concurrency limit

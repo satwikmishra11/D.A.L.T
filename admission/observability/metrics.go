@@ -32,12 +32,20 @@ var (
 		},
 		[]string{"reason"},
 	)
+	
+	InflightRequests = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "admission_inflight_requests",
+			Help: "Current number of inflight requests",
+		},
+	)
 )
 
 func init() {
 	prometheus.MustRegister(RequestsTotal)
 	prometheus.MustRegister(RequestDuration)
 	prometheus.MustRegister(PolicyDeniedTotal)
+	prometheus.MustRegister(InflightRequests)
 }
 
 // Handler returns the HTTP handler for Prometheus metrics

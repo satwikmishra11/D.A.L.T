@@ -3,17 +3,23 @@ package state
 import (
 	"context"
 
+	"admission/config"
 	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 type RedisStore struct {
 	rdb *redis.Client
 }
 
-func NewRedis(addr string) *RedisStore {
+func NewRedis(cfg *config.Config) *RedisStore {
 	return &RedisStore{
 		rdb: redis.NewClient(&redis.Options{
-			Addr: addr,
+			Addr:         cfg.RedisAddr,
+			PoolSize:     cfg.RedisPoolSize,
+			DialTimeout:  time.Duration(cfg.RedisDialTimeout) * time.Millisecond,
+			ReadTimeout:  time.Duration(cfg.RedisReadTimeout) * time.Millisecond,
+			WriteTimeout: time.Duration(cfg.RedisReadTimeout) * time.Millisecond,
 		}),
 	}
 }

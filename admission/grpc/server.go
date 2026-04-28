@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"admission/audit"
+	"admission/config"
 	"admission/dedupe"
 	"admission/observability"
 	"admission/policy"
@@ -15,8 +16,10 @@ import (
 	pb "admission/proto"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 )
 
 type Server struct {
@@ -26,9 +29,10 @@ type Server struct {
 	shed   *shed.Shedder
 	limit  *ratelimit.Limiter
 	health *health.Server
+	cfg    *config.Config
 }
 
-func NewServer(store state.Store) *Server {
+func NewServer(store state.Store, cfg *config.Config) *Server {
 	// Try to get Redis client for rate limiter
 	var limiter *ratelimit.Limiter
 	if redisStore, ok := store.(*state.RedisStore); ok {
@@ -46,9 +50,10 @@ func NewServer(store state.Store) *Server {
 			policy.MaxDuration(3600),
 		),
 		dedupe: dedupe.New(store),
-		shed:   shed.New(store),
+		shed:   shed.New(store, cfg.MaxInflight),
 		limit:  limiter,
 		health: health.NewServer(),
+		cfg:    cfg,
 	}
 	
 	// Set serving status
@@ -71,6 +76,17 @@ func (s *Server) ValidateExecution(
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
+	// Payload Validation
+	if req.OrgId == "" {
+		return nil, status.Error(codes.InvalidArgument, "org_id is required")
+	}
+	if req.Users <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "users must be greater than 0")
+	}
+	if req.Duration <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "duration must be greater than 0")
+	}
+
 	if s.dedupe.Seen(ctx, req.RequestId) {
 		return &pb.ExecutionResponse{Allowed: true}, nil
 	}
@@ -84,8 +100,8 @@ func (s *Server) ValidateExecution(
 	}
 	defer s.shed.Exit(ctx)
 
-	// Rate Limit: 100 reqs / minute per Org
-	allowed, err := s.limit.Allow(ctx, req.OrgId, 100, time.Minute)
+	// Rate Limit per Org
+	allowed, err := s.limit.Allow(ctx, req.OrgId, s.cfg.RateLimit, time.Minute)
 	if err != nil {
 		observability.Error("rate_limit_error", zap.Error(err))
 		return &pb.ExecutionResponse{
