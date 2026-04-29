@@ -56,4 +56,14 @@ impl RedisClient {
             .await?;
         Ok(())
     }
+
+    pub async fn is_cancelled(&self, task_id: &str) -> Result<bool> {
+        let mut conn = self.manager.clone();
+        let key = format!("task:cancellation:{}", task_id);
+        let exists: bool = redis::cmd("EXISTS")
+            .arg(&key)
+            .query_async(&mut conn)
+            .await?;
+        Ok(exists)
+    }
 }

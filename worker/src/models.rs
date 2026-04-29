@@ -49,6 +49,9 @@ pub struct WorkerResult {
     // Throughput
     pub actual_rps: f64,
     
+    // Status codes tracking
+    pub status_codes: HashMap<u16, u64>,
+    
     pub error_msg: Option<String>,
 }
 

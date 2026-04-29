@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 use anyhow::Result;
 use tokio::sync::Mutex;
@@ -25,7 +26,8 @@ impl TaskExecutor {
     pub async fn execute(
         &self, 
         task: WorkerTask, 
-        progress_callback: impl Fn(WorkerResult) + Send + Sync + 'static
+        progress_callback: impl Fn(WorkerResult) + Send + Sync + 'static,
+        is_cancelled: Arc<AtomicBool>
     ) -> Result<WorkerResult> {
         info!("Starting execution for task {} with {} RPS", task.task_id, task.rps);
 
@@ -70,6 +72,7 @@ impl TaskExecutor {
                         p99_latency_ms: stats.p99 as f64 / 1000.0,
                         max_latency_ms: stats.max as f64 / 1000.0,
                         actual_rps: stats.count as f64, // Approximate per second since we reset
+                        status_codes: stats.status_codes,
                         error_msg: None,
                     };
                     
@@ -93,8 +96,9 @@ impl TaskExecutor {
             let task = task.clone();
             let metrics = metrics.clone();
             
+            let is_cancelled_clone = is_cancelled.clone();
             handles.push(tokio::spawn(async move {
-                while start_time.elapsed() < duration {
+                while start_time.elapsed() < duration && !is_cancelled_clone.load(Ordering::Relaxed) {
                     // Wait for permission
                     limiter.until_ready().await;
                     
@@ -104,14 +108,14 @@ impl TaskExecutor {
                     
                     let mut m = metrics.lock().await;
                     match response {
-                        Ok(success) => {
-                            if success {
-                                m.record_success(latency_us);
+                        Ok(status) => {
+                            if status >= 200 && status < 400 {
+                                m.record_success(latency_us, status);
                             } else {
-                                m.record_error();
+                                m.record_error(Some(status));
                             }
                         }
-                        Err(_) => m.record_error(),
+                        Err(_) => m.record_error(None),
                     }
                 }
             }));
@@ -142,12 +146,13 @@ impl TaskExecutor {
              p99_latency_ms: 0.0,
              max_latency_ms: 0.0,
              actual_rps: 0.0,
+             status_codes: std::collections::HashMap::new(),
              error_msg: None,
         })
     }
 
-    async fn send_request(client: &HttpClient, task: &WorkerTask) -> Result<bool> {
-        let req_builder = match task.method {
+    async fn send_request(client: &HttpClient, task: &WorkerTask) -> Result<u16> {
+        let mut req_builder = match task.method {
             HttpMethod::GET => client.client().get(&task.target_url),
             HttpMethod::POST => client.client().post(&task.target_url),
             HttpMethod::PUT => client.client().put(&task.target_url),
@@ -155,17 +160,21 @@ impl TaskExecutor {
             _ => client.client().get(&task.target_url),
         };
 
+        if let Some(headers) = &task.headers {
+            for (k, v) in headers {
+                req_builder = req_builder.header(k, v);
+            }
+        }
+
         let req = if let Some(body) = &task.body {
             req_builder.body(body.clone())
         } else {
             req_builder
         };
         
-        // Headers would be added here
-
         match req.send().await {
-            Ok(res) => Ok(res.status().is_success()),
-            Err(_) => Ok(false),
+            Ok(res) => Ok(res.status().as_u16()),
+            Err(e) => Err(e.into()),
         }
     }
 }

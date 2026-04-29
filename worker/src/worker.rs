@@ -1,8 +1,16 @@
 use anyhow::Result;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tokio::sync::Mutex as TokioMutex;
 use tokio::time::{sleep, Duration};
 use tracing::{info, warn, error, instrument};
 use sysinfo::{System, SystemExt, CpuExt};
+
+#[derive(Clone)]
+struct WorkerState {
+    status: WorkerStatus,
+    current_task_id: Option<String>,
+}
 
 use crate::config::Settings;
 use crate::clients::redis::RedisClient;
@@ -15,6 +23,7 @@ pub struct WorkerService {
     redis: RedisClient,
     http: HttpClient,
     system: System,
+    state: Arc<TokioMutex<WorkerState>>,
 }
 
 impl WorkerService {
@@ -22,11 +31,17 @@ impl WorkerService {
         let redis = RedisClient::new(config.redis.clone()).await?;
         let http = HttpClient::new(&config.http)?;
         
+        let state = Arc::new(TokioMutex::new(WorkerState {
+            status: WorkerStatus::Idle,
+            current_task_id: None,
+        }));
+        
         Ok(Self {
             config,
             redis,
             http,
             system: System::new_all(),
+            state,
         })
     }
 
@@ -65,6 +80,7 @@ impl WorkerService {
         
         // We need a fresh system object or shared state for metrics if we want real cpu usage
         // For simplicity, passing a clone, but note System::refresh is needed
+        let state_clone = self.state.clone();
         
         tokio::spawn(async move {
             let mut sys = System::new();
@@ -75,11 +91,13 @@ impl WorkerService {
                 let cpu_usage = sys.global_cpu_info().cpu_usage();
                 let memory_usage = sys.used_memory(); // Bytes
                 
+                let current_state = state_clone.lock().await.clone();
+                
                 let heartbeat = WorkerHeartbeat {
                     worker_id: worker_id.clone(),
                     timestamp: chrono::Utc::now(),
-                    status: WorkerStatus::Idle, // Should reflect real status
-                    current_task_id: None,
+                    status: current_state.status,
+                    current_task_id: current_state.current_task_id,
                     requests_processed: 0, // Needs shared state
                     cpu_usage,
                     memory_usage_mb: memory_usage / 1024 / 1024,
@@ -102,8 +120,31 @@ impl WorkerService {
     async fn process_task(&self, task: WorkerTask) -> Result<()> {
         info!("Processing task: {} ({} RPS)", task.task_id, task.rps);
         
+        {
+            let mut state = self.state.lock().await;
+            state.status = WorkerStatus::Busy;
+            state.current_task_id = Some(task.task_id.clone());
+        }
+        
         let executor = TaskExecutor::new(self.http.clone(), self.config.worker_id.clone());
         let redis = self.redis.clone();
+        
+        let is_cancelled = Arc::new(AtomicBool::new(false));
+        let cancel_clone = is_cancelled.clone();
+        let task_id_clone = task.task_id.clone();
+        let redis_clone = self.redis.clone();
+        
+        let cancel_handle = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(2));
+            loop {
+                interval.tick().await;
+                if let Ok(true) = redis_clone.is_cancelled(&task_id_clone).await {
+                    warn!("Task {} was cancelled by coordinator!", task_id_clone);
+                    cancel_clone.store(true, Ordering::Relaxed);
+                    break;
+                }
+            }
+        });
         
         // Callback for streaming results
         let callback = move |result| {
@@ -117,9 +158,19 @@ impl WorkerService {
              });
         };
 
-        executor.execute(task, callback).await?;
+        match executor.execute(task, callback, is_cancelled).await {
+            Ok(_) => info!("Task completed"),
+            Err(e) => error!("Task failed: {}", e),
+        }
         
-        info!("Task completed");
+        cancel_handle.abort();
+        
+        {
+            let mut state = self.state.lock().await;
+            state.status = WorkerStatus::Idle;
+            state.current_task_id = None;
+        }
+        
         Ok(())
     }
 }
