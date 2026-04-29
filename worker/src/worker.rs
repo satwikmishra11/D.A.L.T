@@ -48,7 +48,7 @@ impl WorkerService {
     pub async fn run(&mut self) -> Result<()> {
         info!("Worker {} started. Waiting for tasks...", self.config.worker_id);
 
-        let heartbeat_handle = self.start_heartbeat_loop();
+        self.start_heartbeat_loop();
 
         loop {
             match self.redis.pop_task().await {
@@ -68,8 +68,6 @@ impl WorkerService {
                 }
             }
         }
-        
-        // heartbeat_handle.abort();
     }
 
     fn start_heartbeat_loop(&self) -> tokio::task::JoinHandle<()> {

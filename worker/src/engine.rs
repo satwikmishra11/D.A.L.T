@@ -3,10 +3,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 use anyhow::Result;
 use tokio::sync::Mutex;
-use tracing::{info, debug, error};
-use governor::{Quota, RateLimiter, Jitter};
-use governor::state::{InMemoryState, NotKeyed};
-use governor::clock::QuantaClock;
+use tracing::info;
+use governor::{Quota, RateLimiter};
 use std::num::NonZeroU32;
 
 use crate::models::{WorkerTask, WorkerResult, HttpMethod};
@@ -28,7 +26,7 @@ impl TaskExecutor {
         task: WorkerTask, 
         progress_callback: impl Fn(WorkerResult) + Send + Sync + 'static,
         is_cancelled: Arc<AtomicBool>
-    ) -> Result<WorkerResult> {
+    ) -> Result<()> {
         info!("Starting execution for task {} with {} RPS", task.task_id, task.rps);
 
         let rps = NonZeroU32::new(task.rps).unwrap_or(NonZeroU32::new(1).unwrap());
@@ -130,25 +128,7 @@ impl TaskExecutor {
         
         info!("Execution finished for task {}", task.task_id);
         
-        // Final aggregate (placeholder, in reality we stream results)
-        Ok(WorkerResult {
-             task_id: task.task_id.clone(),
-             worker_id: self.worker_id.clone(),
-             timestamp: chrono::Utc::now(),
-             success: true,
-             total_requests: 0, 
-             success_count: 0,
-             error_count: 0,
-             avg_latency_ms: 0.0,
-             p50_latency_ms: 0.0,
-             p90_latency_ms: 0.0,
-             p95_latency_ms: 0.0,
-             p99_latency_ms: 0.0,
-             max_latency_ms: 0.0,
-             actual_rps: 0.0,
-             status_codes: std::collections::HashMap::new(),
-             error_msg: None,
-        })
+        Ok(())
     }
 
     async fn send_request(client: &HttpClient, task: &WorkerTask) -> Result<u16> {

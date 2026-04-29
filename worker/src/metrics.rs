@@ -1,5 +1,5 @@
 use hdrhistogram::Histogram;
-use std::time::Instant;
+
 use std::collections::HashMap;
 
 pub struct MetricsCollector {
@@ -7,7 +7,6 @@ pub struct MetricsCollector {
     success_count: u64,
     error_count: u64,
     status_codes: HashMap<u16, u64>,
-    start_time: Instant,
 }
 
 impl MetricsCollector {
@@ -18,7 +17,6 @@ impl MetricsCollector {
             success_count: 0,
             error_count: 0,
             status_codes: HashMap::new(),
-            start_time: Instant::now(),
         }
     }
 
@@ -47,7 +45,6 @@ impl MetricsCollector {
         self.success_count = 0;
         self.error_count = 0;
         self.status_codes.clear();
-        self.start_time = Instant::now();
     }
 
     pub fn get_stats(&self) -> MetricsSnapshot {
