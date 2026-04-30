@@ -32,4 +32,12 @@
   .status-badge {
     @apply px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide;
   }
+
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/50 shadow-lg;
+  }
+
+  .glass-dark {
+    @apply bg-gray-900/80 backdrop-blur-xl border border-gray-700/50 shadow-2xl;
+  }
 }

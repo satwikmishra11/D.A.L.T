@@ -1,5 +1,6 @@
 import React from 'react';
 import { LayoutDashboard, Play, FileText, Settings, Activity, Box, Bell, Search, User } from 'lucide-react';
+import CommandPalette from '../ui/CommandPalette';
 
 const Sidebar = ({ activeView, setActiveView }) => {
   const menuItems = [
@@ -55,9 +56,13 @@ const Header = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-aws-orange transition-colors" size={18} />
           <input 
             type="text" 
-            placeholder="Search scenarios, run IDs..." 
+            placeholder="Search scenarios, run IDs... (Cmd+K)" 
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-aws-orange/20 focus:border-aws-orange transition-all text-sm bg-gray-50 focus:bg-white"
           />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex gap-1">
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-white border border-gray-200 rounded shadow-sm">⌘</kbd>
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 bg-white border border-gray-200 rounded shadow-sm">K</kbd>
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-6 text-gray-600">
@@ -82,6 +87,7 @@ const Header = () => {
 const MainLayout = ({ children, activeView, setActiveView }) => {
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
+      <CommandPalette />
       <Sidebar activeView={activeView} setActiveView={setActiveView} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />

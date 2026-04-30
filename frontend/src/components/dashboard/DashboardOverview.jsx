@@ -1,6 +1,8 @@
 import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, Activity, AlertTriangle, CheckCircle, Clock, Zap, ArrowRight } from 'lucide-react';
+import AIInsights from './AIInsights';
+import TopologyMap from './TopologyMap';
 
 const StatCard = ({ title, value, subtext, trend, icon: Icon, color }) => (
   <div className="card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1 group border-l-4" style={{ borderLeftColor: `var(--color-${color}-500)` }}>
@@ -110,10 +112,12 @@ const DashboardOverview = ({ analyticsData }) => {
         <StatCard title="Error Rate" value="0.12%" trend={-5.1} icon={AlertTriangle} color="red" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Bento Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
         {/* Main Chart */}
-        <div className="card lg:col-span-2 p-6">
-          <div className="flex justify-between items-center mb-8">
+        <div className="card lg:col-span-2 p-6 flex flex-col min-h-[400px]">
+          <div className="flex justify-between items-center mb-6">
             <div>
                 <h3 className="font-bold text-xl text-gray-900">Throughput vs Latency</h3>
                 <p className="text-sm text-gray-500">Real-time correlation analysis</p>
@@ -126,7 +130,7 @@ const DashboardOverview = ({ analyticsData }) => {
                 ))}
             </div>
           </div>
-          <div className="h-96">
+          <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
@@ -160,37 +164,42 @@ const DashboardOverview = ({ analyticsData }) => {
           </div>
         </div>
 
+        {/* AI Insights Panel */}
+        <AIInsights />
+
+        {/* Topology Map */}
+        <TopologyMap />
+
         {/* Health & Insights Side Panel */}
-        <div className="space-y-8">
-          <div className="card flex flex-col items-center py-10 relative overflow-hidden">
+        <div className="space-y-6 lg:col-span-1 flex flex-col h-full">
+          <div className="card flex flex-col items-center py-8 relative overflow-hidden flex-1">
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
             <HealthScoreGauge score={85} />
-            <div className="mt-8 text-center px-6">
+            <div className="mt-6 text-center px-6">
               <h4 className="text-xl font-bold text-gray-900">System Healthy</h4>
               <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                All critical systems are operational. Global latency is within 99th percentile SLA limits.
+                Global latency is within 99th percentile SLA.
               </p>
             </div>
-            <button className="mt-8 text-aws-orange text-sm font-bold hover:text-yellow-600 flex items-center gap-1 transition-colors">
+            <button className="mt-4 text-aws-orange text-sm font-bold hover:text-yellow-600 flex items-center gap-1 transition-colors">
               View Detailed Analysis <ArrowRight size={14} />
             </button>
           </div>
 
-          <div className="card">
-            <div className="flex justify-between items-center mb-6">
+          <div className="card flex-1">
+            <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-gray-900">Recent Alerts</h3>
                 <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">3 New</span>
             </div>
-            <div className="space-y-4">
-              {[1, 2, 3].map((_, i) => (
-                <div key={i} className="flex gap-4 items-start p-4 bg-red-50 rounded-xl border border-red-100 hover:bg-red-100/50 transition-colors cursor-pointer">
-                  <div className="bg-red-200 p-2 rounded-lg">
-                    <AlertTriangle size={18} className="text-red-600" />
+            <div className="space-y-3">
+              {[1, 2].map((_, i) => (
+                <div key={i} className="flex gap-3 items-start p-3 bg-red-50 rounded-xl border border-red-100 hover:bg-red-100/50 transition-colors cursor-pointer">
+                  <div className="bg-red-200 p-1.5 rounded-lg shrink-0">
+                    <AlertTriangle size={16} className="text-red-600" />
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold text-gray-900">High Latency Detected</h5>
-                    <p className="text-xs text-gray-600 mt-1 leading-snug">Scenario "Checkout Flow" breached 500ms threshold.</p>
-                    <span className="text-[10px] text-gray-400 mt-2 block font-medium">2 minutes ago</span>
+                    <h5 className="text-sm font-bold text-gray-900">High Latency</h5>
+                    <p className="text-xs text-gray-600 mt-0.5 leading-snug truncate w-40">Scenario "Checkout Flow"</p>
                   </div>
                 </div>
               ))}
