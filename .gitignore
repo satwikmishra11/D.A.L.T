@@ -21,3 +21,4 @@ target
 #.idea/
 worker/.DS_Store
 .DS_Store
+node_modules

@@ -1,8 +1,7 @@
-cat > frontend/src/index.js << 'EOF'
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './styles/tailwind.css';
-import App from './App';
+import './index.css';
+import App from './LoadTestDashboard';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -10,4 +9,3 @@ root.render(
     <App />
   </React.StrictMode>
 );
-EOF
