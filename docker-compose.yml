@@ -79,6 +79,24 @@ services:
     networks:
       - loadtest-network
 
+  # Go Admission Controller
+  admission:
+    build:
+      context: ./admission
+      dockerfile: Dockerfile
+    container_name: loadtest-admission
+    ports:
+      - "8081:8081"
+      - "9090:9090"
+      - "9091:9091"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - redis
+    networks:
+      - loadtest-network
+
 volumes:
   mongodb_data:
   redis_data:
