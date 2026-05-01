@@ -3,6 +3,8 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp, TrendingDown, Activity, AlertTriangle, CheckCircle, Clock, Zap, ArrowRight } from 'lucide-react';
 import AIInsights from './AIInsights';
 import TopologyMap from './TopologyMap';
+import LiveLogViewer from './LiveLogViewer';
+import ScenarioFlow from './ScenarioFlow';
 
 const StatCard = ({ title, value, subtext, trend, icon: Icon, color }) => (
   <div className="card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1 group border-l-4" style={{ borderLeftColor: `var(--color-${color}-500)` }}>
@@ -205,6 +207,16 @@ const DashboardOverview = ({ analyticsData }) => {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Advanced Features Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <ScenarioFlow />
+        </div>
+        <div className="lg:col-span-2">
+          <LiveLogViewer />
         </div>
       </div>
     </div>
