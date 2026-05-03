@@ -38,6 +38,7 @@ module "documentdb" {
   
   # Encryption
   storage_encrypted = true
+  kms_key_id        = aws_kms_key.main.arn
   
   # Backups
   retention_period = 7
@@ -77,5 +78,6 @@ resource "aws_elasticache_replication_group" "default" {
   
   num_cache_clusters            = var.environment == "prod" ? 2 : 1
   at_rest_encryption_enabled    = true
+  kms_key_id                    = aws_kms_key.main.arn
   transit_encryption_enabled    = true
 }

@@ -8,6 +8,12 @@ module "eks" {
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
 
+  create_kms_key = false
+  cluster_encryption_config = {
+    provider_key_arn = aws_kms_key.main.arn
+    resources        = ["secrets"]
+  }
+
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
@@ -81,4 +87,21 @@ resource "aws_iam_policy" "worker_autoscaling" {
       },
     ]
   })
+}
+
+# ========== IAM Roles for Service Accounts (IRSA) ==========
+
+module "load_balancer_controller_irsa_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name                              = "${var.project_name}-${var.environment}-alb-controller"
+  attach_load_balancer_controller_policy = true
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
+    }
+  }
 }

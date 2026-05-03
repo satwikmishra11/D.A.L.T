@@ -33,3 +33,18 @@ output "redis_primary_endpoint" {
   description = "Redis Primary Endpoint"
   value       = aws_elasticache_replication_group.default.primary_endpoint_address
 }
+
+output "kms_key_arn" {
+  description = "The ARN of the KMS key used for encryption"
+  value       = aws_kms_key.main.arn
+}
+
+output "prometheus_workspace_endpoint" {
+  description = "Endpoint for Amazon Managed Prometheus"
+  value       = aws_prometheus_workspace.main.prometheus_endpoint
+}
+
+output "grafana_workspace_endpoint" {
+  description = "Endpoint for Amazon Managed Grafana"
+  value       = aws_grafana_workspace.main.endpoint
+}
