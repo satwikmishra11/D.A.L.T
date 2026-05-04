@@ -1,0 +1,95 @@
+# ========== Go Admission Gateway Deployment ==========
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admission-gateway
+  namespace: loadtest
+  labels:
+    app: admission
+spec:
+  replicas: 2 # High Availability for the gateway
+  selector:
+    matchLabels:
+      app: admission
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: admission
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - admission
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: admission
+        image: your-registry/loadtest-admission:latest
+        imagePullPolicy: Always
+        ports:
+        - name: grpc
+          containerPort: 9090
+        - name: http
+          containerPort: 8081
+        - name: metrics
+          containerPort: 9091
+        env:
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admission-service
+  namespace: loadtest
+  labels:
+    app: admission
+spec:
+  type: ClusterIP
+  selector:
+    app: admission
+  ports:
+    - name: grpc
+      port: 9090
+      targetPort: 9090
+    - name: http
+      port: 8081
+      targetPort: 8081
+    - name: metrics
+      port: 9091
+      targetPort: 9091

@@ -1,20 +1,25 @@
-# ========== k8s/ingress.yaml ==========
+# ========== AWS ALB Ingress with WAF & ACM ==========
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: loadtest-ingress
   namespace: loadtest
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/websocket-services: "controller-service"
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    # The WAF ACL ARN will be injected dynamically by CI/CD or Terraform, but we declare the intention here
+    alb.ingress.kubernetes.io/wafv2-acl-arn: "arn:aws:wafv2:us-east-1:ACCOUNT_ID:regional/webacl/loadtest-dev-api-waf/ID"
+    # ACM Certificate auto-discovery
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/ID"
+    # Advanced health checks
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/success-codes: '200'
 spec:
-  ingressClassName: nginx
-  tls:
-  - hosts:
-    - loadtest.yourdomain.com
-    secretName: loadtest-tls
   rules:
   - host: loadtest.yourdomain.com
     http:
@@ -40,5 +45,3 @@ spec:
             name: frontend-service
             port:
               number: 80
-
----
