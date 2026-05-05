@@ -15,26 +15,23 @@ async def analyze_latencies(payload: LatencyInput):
     anomalies = detect_anomalies(payload.latencies)
     trend = analyze_trend(payload.latencies, payload.timestamps)
     
-    # Simple Heuristic Health Score Calculation
-    # Start with 100
-    # Deduct 20 if p99 > 1000ms (SLA breach example)
-    # Deduct 20 if Anomalous
-    # Deduct 20 if Degrading
-    score = 100.0
-    if stats.p99 > 2000: score -= 30
-    elif stats.p99 > 1000: score -= 15
+    # Professional Heuristic Health Score Calculation
+    # Base score on Apdex
+    score = stats.apdex_score * 100.0
     
+    # Deduct points for anomalies found by Isolation Forest
     if anomalies.is_anomalous:
-        score -= min(20, anomalies.anomaly_count * 2)
+        score -= min(30.0, anomalies.anomaly_count * 2.5)
         
+    # Deduct points if Holt-Winters forecasts a degrading trend
     if trend.is_degrading:
-        score -= 20
+        score -= 15.0
         
     return AnalysisResult(
         statistics=stats,
         anomalies=anomalies,
         trend=trend,
-        health_score=max(0.0, score)
+        health_score=max(0.0, min(100.0, score))
     )
 
 @router.get("/health")
