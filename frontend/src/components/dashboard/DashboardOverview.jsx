@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, Activity, AlertTriangle, CheckCircle, Clock, Zap, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, AlertTriangle, Clock, Zap, ArrowRight, Star, Server, Shield, Database } from 'lucide-react';
 import AIInsights from './AIInsights';
 import TopologyMap from './TopologyMap';
 import LiveLogViewer from './LiveLogViewer';
@@ -114,30 +114,73 @@ const DashboardOverview = ({ analyticsData }) => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-end pb-4 border-b border-gray-100">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center pb-4 border-b border-[#eaeded]">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Platform Overview</h1>
-          <p className="text-gray-500 mt-2 flex items-center gap-2">
-            <Clock size={16} /> Last updated: Just now
+          <h1 className="text-[24px] font-bold text-[#16191f]">Console Home</h1>
+          <p className="text-[14px] text-[#545b64] mt-1 flex items-center gap-2">
+             DevOps Central Management Console
           </p>
         </div>
-        <div className="flex gap-4">
-          <button onClick={handleExport} disabled={isExporting} className="btn-secondary flex items-center gap-2 shadow-sm hover:shadow">
-            {isExporting ? 'Exporting...' : 'Export Report'}
+        <div className="flex gap-3">
+          <button onClick={handleExport} disabled={isExporting} className="btn-secondary flex items-center gap-2">
+            {isExporting ? 'Exporting...' : 'Export Dashboard Report'}
           </button>
-          <button onClick={handleHealthCheck} disabled={isCheckingHealth} className="btn-primary flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
-            <Activity size={18} className={isCheckingHealth ? "animate-spin" : ""} /> {isCheckingHealth ? 'Checking...' : 'Run Health Check'}
+          <button onClick={handleHealthCheck} disabled={isCheckingHealth} className="btn-primary flex items-center gap-2">
+            <Activity size={16} className={isCheckingHealth ? "animate-spin" : ""} /> {isCheckingHealth ? 'Checking...' : 'Run Global Health Check'}
           </button>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Recently Visited */}
+        <div className="card col-span-2">
+          <h3 className="font-bold text-[16px] text-[#16191f] mb-4">Recently visited</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+             {[
+               { name: 'Load Testing Engine', icon: Activity, group: 'Compute' },
+               { name: 'Kubernetes Clusters', icon: Server, group: 'Containers' },
+               { name: 'IAM Dashboard', icon: Shield, group: 'Security' },
+               { name: 'RDS Instances', icon: Database, group: 'Database' }
+             ].map(service => (
+               <div key={service.name} className="border border-[#eaeded] rounded-sm p-3 hover:border-[#879596] cursor-pointer transition-colors group">
+                 <div className="flex items-center gap-2 mb-2">
+                    <service.icon size={16} className="text-[#0073bb] group-hover:text-[#ec7211] transition-colors" />
+                    <span className="text-[13px] font-bold text-[#0073bb] group-hover:text-[#ec7211] hover:underline truncate">{service.name}</span>
+                 </div>
+                 <div className="text-[11px] text-[#545b64] uppercase tracking-wider">{service.group}</div>
+               </div>
+             ))}
+          </div>
+        </div>
+
+        {/* Favorites */}
+        <div className="card col-span-1">
+          <h3 className="font-bold text-[16px] text-[#16191f] mb-4 flex justify-between items-center">
+            Favorites <Star size={16} className="text-[#879596]" />
+          </h3>
+          <div className="space-y-1">
+             {[
+               'CI/CD Pipeline Manager',
+               'ArgoCD Sync Status',
+               'Production Grafana Dashboards'
+             ].map(fav => (
+               <div key={fav} className="flex items-center gap-2 py-2 border-b border-[#eaeded] last:border-0 cursor-pointer group">
+                  <Star size={14} className="text-[#ec7211]" fill="#ec7211" />
+                  <span className="text-[13px] text-[#0073bb] group-hover:underline">{fav}</span>
+               </div>
+             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Global Health and Stats Grid */}
+      <h3 className="font-bold text-[16px] text-[#16191f] pt-4">Global Health Overview</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Active Scenarios" value="12" trend={8.5} icon={Zap} color="blue" />
-        <StatCard title="Total Requests" value="2.4M" trend={12.3} icon={Activity} color="green" />
-        <StatCard title="Avg Latency" value="45ms" trend={-2.4} icon={CheckCircle} color="purple" />
-        <StatCard title="Error Rate" value="0.12%" trend={-5.1} icon={AlertTriangle} color="red" />
+        <StatCard title="Active Incidents" value="0" trend={-100} icon={AlertTriangle} color="green" />
+        <StatCard title="Total Deployments (24h)" value="142" trend={12.3} icon={Activity} color="blue" />
+        <StatCard title="Avg Pipeline Duration" value="4m 12s" trend={-2.4} icon={Clock} color="purple" />
+        <StatCard title="Test Scenarios Running" value="12" trend={8.5} icon={Zap} color="orange" />
       </div>
 
       {/* Bento Grid Layout */}
