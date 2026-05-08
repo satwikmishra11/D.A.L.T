@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from './components/layout/MainLayout';
 import DashboardOverview from './components/dashboard/DashboardOverview';
 import ScenariosView from './components/dashboard/ScenariosView';
-import { LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, GitCompare, History, Users, DollarSign, Zap, Award, Target } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { GitCompare } from 'lucide-react';
 
 // ========== ComparisonView Component (Restyled) ==========
 const ComparisonView = ({ scenarios = [] }) => {
@@ -22,7 +22,7 @@ const ComparisonView = ({ scenarios = [] }) => {
              recommendation: "Scenario A is the clear winner for production deployment."
          })
      }
-  }, []);
+  }, [scenarios.length]);
 
   if (!comparisonData) return <div className="p-8 text-center text-gray-500">Loading comparison...</div>;
 
@@ -37,7 +37,7 @@ const ComparisonView = ({ scenarios = [] }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Scenario Comparison</h1>
-        <button className="btn-secondary flex items-center gap-2">
+        <button onClick={() => alert('Select a new scenario from the history list to begin comparison.')} className="btn-secondary flex items-center gap-2">
             <GitCompare size={16} /> Compare New
         </button>
       </div>

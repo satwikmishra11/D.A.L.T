@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, Activity, AlertTriangle, CheckCircle, Clock, Zap, ArrowRight } from 'lucide-react';
 import AIInsights from './AIInsights';
@@ -7,26 +7,24 @@ import LiveLogViewer from './LiveLogViewer';
 import ScenarioFlow from './ScenarioFlow';
 
 const StatCard = ({ title, value, subtext, trend, icon: Icon, color }) => (
-  <div className="card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1 group border-l-4" style={{ borderLeftColor: `var(--color-${color}-500)` }}>
-    <div className="flex justify-between items-start mb-4">
-      <div>
-        <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">{title}</p>
-        <h3 className="text-3xl font-bold mt-1 text-gray-900 tracking-tight">{value}</h3>
-      </div>
-      <div className={`p-3 rounded-xl bg-${color}-50 text-${color}-600 group-hover:bg-${color}-100 transition-colors shadow-sm`}>
-        <Icon size={22} strokeWidth={2.5} />
-      </div>
+  <div className="stat-card group">
+    <div className="flex justify-between items-center mb-1">
+      <p className="text-[13px] font-bold text-[#545b64] tracking-tight">{title}</p>
+      <Icon size={14} className="text-[#879596]" />
     </div>
-    <div className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded-lg -mx-2 -mb-2">
+    <div className="flex items-end gap-3 mb-2">
+      <h3 className="text-2xl font-black text-[#16191f] tracking-tighter">{value}</h3>
+    </div>
+    <div className="flex items-center gap-1 text-[12px]">
       {trend > 0 ? (
-        <TrendingUp size={16} className="text-green-500" />
+        <TrendingUp size={12} className="text-[#0073bb]" />
       ) : (
-        <TrendingDown size={16} className="text-red-500" />
+        <TrendingDown size={12} className="text-[#d13212]" />
       )}
-      <span className={trend > 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+      <span className={trend > 0 ? "text-[#0073bb] font-bold" : "text-[#d13212] font-bold"}>
         {Math.abs(trend)}%
       </span>
-      <span className="text-gray-400 font-medium">vs last week</span>
+      <span className="text-[#545b64]">vs last week</span>
     </div>
   </div>
 );
@@ -66,7 +64,7 @@ const HealthScoreGauge = ({ score }) => {
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-4xl font-extrabold text-gray-800 tracking-tighter">{score}</span>
+        <span className={`text-4xl font-extrabold tracking-tighter ${color}`}>{score}</span>
         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Health</span>
       </div>
     </div>
@@ -74,6 +72,10 @@ const HealthScoreGauge = ({ score }) => {
 };
 
 const DashboardOverview = ({ analyticsData }) => {
+  const [timeRange, setTimeRange] = useState('1H');
+  const [isExporting, setIsExporting] = useState(false);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+
   // Mock data for the chart
   const data = [
     { time: '10:00', rps: 400, latency: 240 },
@@ -87,6 +89,30 @@ const DashboardOverview = ({ analyticsData }) => {
     { time: '10:40', rps: 900, latency: 200 },
   ];
 
+  const handleExport = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      const csvContent = "data:text/csv;charset=utf-8,Time,RPS,Latency\n" 
+        + data.map(row => `${row.time},${row.rps},${row.latency}`).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "platform_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setIsExporting(false);
+    }, 800);
+  };
+
+  const handleHealthCheck = () => {
+    setIsCheckingHealth(true);
+    setTimeout(() => {
+      setIsCheckingHealth(false);
+      alert("✅ Health Check Passed: All 12 scenarios are operational and worker nodes are responsive.");
+    }, 1500);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-end pb-4 border-b border-gray-100">
@@ -97,11 +123,11 @@ const DashboardOverview = ({ analyticsData }) => {
           </p>
         </div>
         <div className="flex gap-4">
-          <button className="btn-secondary flex items-center gap-2 shadow-sm hover:shadow">
-            Export Report
+          <button onClick={handleExport} disabled={isExporting} className="btn-secondary flex items-center gap-2 shadow-sm hover:shadow">
+            {isExporting ? 'Exporting...' : 'Export Report'}
           </button>
-          <button className="btn-primary flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
-            <Activity size={18} /> Run Health Check
+          <button onClick={handleHealthCheck} disabled={isCheckingHealth} className="btn-primary flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
+            <Activity size={18} className={isCheckingHealth ? "animate-spin" : ""} /> {isCheckingHealth ? 'Checking...' : 'Run Health Check'}
           </button>
         </div>
       </div>
@@ -126,7 +152,11 @@ const DashboardOverview = ({ analyticsData }) => {
             </div>
             <div className="flex gap-2">
                 {['1H', '24H', '7D'].map((period) => (
-                    <button key={period} className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${period === '1H' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    <button 
+                      key={period} 
+                      onClick={() => setTimeRange(period)}
+                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${timeRange === period ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
                         {period}
                     </button>
                 ))}
@@ -183,9 +213,39 @@ const DashboardOverview = ({ analyticsData }) => {
                 Global latency is within 99th percentile SLA.
               </p>
             </div>
-            <button className="mt-4 text-aws-orange text-sm font-bold hover:text-yellow-600 flex items-center gap-1 transition-colors">
+            <button 
+              onClick={() => alert('Opening Detailed Topology and Resource Analysis...')} 
+              className="mt-4 text-aws-orange text-sm font-bold hover:text-yellow-600 flex items-center gap-1 transition-colors"
+            >
               View Detailed Analysis <ArrowRight size={14} />
             </button>
+          </div>
+
+          <div className="card">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-gray-900">Worker Node Resources</h3>
+                <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">3 Nodes</span>
+            </div>
+            <div className="space-y-4">
+                <div>
+                    <div className="flex justify-between text-xs mb-1"><span className="font-medium text-gray-700">Avg CPU Usage</span><span className="font-bold text-gray-900">72%</span></div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: '72%' }}></div>
+                    </div>
+                </div>
+                <div>
+                    <div className="flex justify-between text-xs mb-1"><span className="font-medium text-gray-700">Memory Allocation</span><span className="font-bold text-gray-900">4.2 / 8 GB</span></div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div className="bg-purple-500 h-2 rounded-full" style={{ width: '52%' }}></div>
+                    </div>
+                </div>
+                <div>
+                    <div className="flex justify-between text-xs mb-1"><span className="font-medium text-gray-700">Network I/O</span><span className="font-bold text-gray-900">1.2 GB/s</span></div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div className="bg-green-500 h-2 rounded-full" style={{ width: '85%' }}></div>
+                    </div>
+                </div>
+            </div>
           </div>
 
           <div className="card flex-1">

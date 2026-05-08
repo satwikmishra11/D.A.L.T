@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Play, Pause, Search, Maximize2, Trash2, ShieldAlert, CheckCircle2, Info } from 'lucide-react';
+import { Terminal, Play, Pause, Search, Maximize2, Minimize2, Trash2, ShieldAlert, CheckCircle2, Info, Download } from 'lucide-react';
 
 const mockLogs = [
   { id: 1, level: 'INFO', time: '10:42:01', worker: 'worker-us-east-1a', msg: 'Initialized load test engine v2.0.4' },
@@ -32,14 +32,33 @@ const LiveLogViewer = () => {
   const [logs, setLogs] = useState(mockLogs);
   const [isPaused, setIsPaused] = useState(false);
   const [filter, setFilter] = useState('');
-  const logEndRef = useRef(null);
+  const [isMaximized, setIsMaximized] = useState(false);
+  const logContainerRef = useRef(null);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom of the container ONLY
   useEffect(() => {
-    if (!isPaused) {
-      logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!isPaused && logContainerRef.current) {
+      const { scrollHeight, clientHeight } = logContainerRef.current;
+      logContainerRef.current.scrollTo({
+        top: scrollHeight - clientHeight,
+        behavior: 'smooth'
+      });
     }
   }, [logs, isPaused]);
+
+  // Export logs to file
+  const downloadLogs = () => {
+    const text = logs.map(l => `[${l.time}] [${l.level}] [${l.worker}] ${l.msg}`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `worker_logs_${new Date().getTime()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // Simulate incoming logs
   useEffect(() => {
@@ -66,7 +85,7 @@ const LiveLogViewer = () => {
   );
 
   return (
-    <div className="card bg-aws-dark text-gray-300 font-mono border-gray-700 h-[400px] flex flex-col shadow-2xl relative overflow-hidden">
+    <div className={`card bg-aws-dark text-gray-300 font-mono border-gray-700 flex flex-col shadow-2xl relative overflow-hidden transition-all duration-300 ${isMaximized ? 'fixed inset-4 z-50 h-auto' : 'h-[400px]'}`}>
       {/* Terminal Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-700 shrink-0 relative z-10">
         <div className="flex items-center gap-3">
@@ -95,19 +114,25 @@ const LiveLogViewer = () => {
           <button onClick={() => setLogs([])} className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white transition-colors" title="Clear">
             <Trash2 size={16} />
           </button>
-          <button className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white transition-colors">
-            <Maximize2 size={16} />
+          <button onClick={downloadLogs} className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white transition-colors" title="Export Logs">
+            <Download size={16} />
+          </button>
+          <button onClick={() => setIsMaximized(!isMaximized)} className="p-1.5 hover:bg-gray-800 rounded text-gray-400 hover:text-white transition-colors" title={isMaximized ? "Minimize" : "Maximize"}>
+            {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
         </div>
       </div>
 
       {/* Terminal Body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-1.5 text-[13px] relative z-10 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+      <div 
+        ref={logContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-1.5 text-[13px] relative z-10 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
+      >
         {filteredLogs.map((log) => (
           <div key={log.id} className="flex gap-3 hover:bg-gray-800/50 px-2 py-0.5 rounded group transition-colors">
             <span className="text-gray-500 shrink-0">[{log.time}]</span>
-            <span className={`font-bold shrink-0 w-12 flex items-center gap-1 ${getLevelColor(log.level)}`}>
-               {log.level}
+            <span className={`font-bold shrink-0 w-20 flex items-center gap-1 ${getLevelColor(log.level)}`}>
+               {getLevelIcon(log.level)} {log.level}
             </span>
             <span className="text-purple-400 shrink-0">[{log.worker}]</span>
             <span className="text-gray-300 break-all">{log.msg}</span>
@@ -116,7 +141,6 @@ const LiveLogViewer = () => {
         {filteredLogs.length === 0 && (
           <div className="text-center text-gray-500 mt-10">No logs match the current filter.</div>
         )}
-        <div ref={logEndRef} />
       </div>
       
       {/* Background Glitch/Scanline effect overlay */}

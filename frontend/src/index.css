@@ -4,40 +4,56 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply bg-[#f2f3f3] text-[#16191f] font-sans text-[14px];
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-aws-orange text-white px-4 py-2 rounded-md font-medium hover:bg-yellow-500 transition-colors shadow-sm;
+    @apply bg-[#ec7211] text-white px-4 py-1.5 rounded-sm font-bold text-[13px] hover:bg-[#eb5f07] transition-colors shadow-sm border border-[#eb5f07];
   }
   
   .btn-secondary {
-    @apply bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium hover:bg-gray-50 transition-colors;
+    @apply bg-white border border-[#879596] text-[#16191f] px-4 py-1.5 rounded-sm font-bold text-[13px] hover:bg-[#fafafa] hover:border-[#16191f] transition-all;
+  }
+  
+  .btn-danger {
+    @apply bg-[#d13212] text-white px-4 py-1.5 rounded-sm font-bold text-[13px] hover:bg-[#a6250b] transition-colors shadow-sm;
   }
 
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-aws-hover transition-all rounded-md cursor-pointer;
+    @apply flex items-center gap-3 px-4 py-2 text-[#d5dbdb] text-[14px] font-medium hover:text-white hover:bg-[#16191f] transition-all cursor-pointer border-l-4 border-transparent;
   }
   
   .nav-item.active {
-    @apply text-aws-orange bg-aws-hover border-l-4 border-aws-orange;
+    @apply text-white bg-[#16191f] border-l-4 border-[#ec7211];
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-card p-6 border border-gray-100;
+    @apply bg-white shadow-[0_1px_1px_0_rgba(2,23,36,0.1),0_1px_1px_0_rgba(2,23,36,0.1)] p-5 border border-[#eaeded] rounded-sm;
+  }
+
+  .stat-card {
+    @apply bg-white shadow-[0_1px_1px_0_rgba(2,23,36,0.1)] p-5 border border-[#eaeded] rounded-sm hover:border-[#879596] transition-colors cursor-pointer;
   }
 
   .status-badge {
-    @apply px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide;
+    @apply px-2 py-0.5 rounded-sm text-[11px] font-bold uppercase tracking-wider;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-1.5 border border-[#879596] rounded-sm text-[14px] focus:outline-none focus:border-[#0073bb] focus:ring-1 focus:ring-[#0073bb] bg-white text-[#16191f] shadow-sm;
+  }
+
+  .label {
+    @apply block text-[13px] font-bold text-[#16191f] mb-1.5;
   }
 
   .glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/50 shadow-lg;
+    @apply bg-white/70 backdrop-blur-md border border-white/50 shadow-sm rounded-sm;
   }
 
   .glass-dark {
-    @apply bg-gray-900/80 backdrop-blur-xl border border-gray-700/50 shadow-2xl;
+    @apply bg-[#16191f]/90 backdrop-blur-xl border border-[#232f3e]/50 shadow-md rounded-sm;
   }
 }

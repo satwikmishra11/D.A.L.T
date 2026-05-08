@@ -10,6 +10,14 @@ const ScenarioForm = ({ scenario, onChange, onSubmit, onCancel, creating }) => {
     onChange({ ...scenario, [field]: value });
   };
 
+  const toggleRegion = (region) => {
+    const currentRegions = scenario.regions || [];
+    const newRegions = currentRegions.includes(region)
+      ? currentRegions.filter(r => r !== region)
+      : [...currentRegions, region];
+    updateField('regions', newRegions);
+  };
+
   const updateLoadProfile = (field, value) => {
     onChange({
       ...scenario,
@@ -62,24 +70,24 @@ const ScenarioForm = ({ scenario, onChange, onSubmit, onCancel, creating }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Create Load Test Scenario</h2>
-        <button onClick={onCancel} className="p-2 hover:bg-gray-100 rounded-lg">
+    <div className="card max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-4 border-b border-[#eaeded] pb-3">
+        <h2 className="text-[18px] font-bold text-[#16191f]">Create Load Test Scenario</h2>
+        <button onClick={onCancel} className="p-1 hover:bg-[#f2f3f3] rounded-sm text-[#545b64]">
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b">
+      <div className="flex gap-5 mb-5 border-b border-[#eaeded]">
         {['basic', 'load', 'sla', 'alerts'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 font-medium border-b-2 transition ${
+            className={`pb-2 text-[14px] font-bold border-b-2 transition-colors ${
               activeTab === tab
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
+                ? 'border-[#ec7211] text-[#ec7211]'
+                : 'border-transparent text-[#545b64] hover:text-[#16191f] hover:border-[#879596]'
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)} Config
@@ -149,6 +157,38 @@ const ScenarioForm = ({ scenario, onChange, onSubmit, onCancel, creating }) => {
                     <option key={env.value} value={env.value}>{env.label}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Network Emulation</label>
+                <select
+                  className="input-field"
+                  value={scenario.networkProfile || 'default'}
+                  onChange={(e) => updateField('networkProfile', e.target.value)}
+                >
+                  <option value="default">Default (No Throttling)</option>
+                  <option value="3g">3G Mobile (Slow)</option>
+                  <option value="4g">4G LTE (Average)</option>
+                  <option value="wifi">Fast WiFi</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Ignore TLS Errors</label>
+                <div className="flex items-center h-10">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={scenario.ignoreTlsErrors || false}
+                      onChange={(e) => updateField('ignoreTlsErrors', e.target.checked)}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <span className="ml-3 text-sm font-medium text-gray-700">Bypass SSL/TLS</span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -312,6 +352,32 @@ const ScenarioForm = ({ scenario, onChange, onSubmit, onCancel, creating }) => {
                 ))}
               </div>
             )}
+
+            {/* Geographic Distribution */}
+            <div className="pt-4 border-t">
+              <label className="label mb-3">Geographic Distribution</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { id: 'us-east-1', label: 'US East (N. Virginia)' },
+                  { id: 'us-west-2', label: 'US West (Oregon)' },
+                  { id: 'eu-central-1', label: 'EU (Frankfurt)' },
+                  { id: 'ap-south-1', label: 'Asia Pacific (Mumbai)' }
+                ].map(region => (
+                  <label key={region.id} className={`flex flex-col p-3 border rounded-lg cursor-pointer transition-colors ${(scenario.regions || []).includes(region.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-gray-700">{region.id}</span>
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        checked={(scenario.regions || []).includes(region.id)}
+                        onChange={() => toggleRegion(region.id)}
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-500">{region.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

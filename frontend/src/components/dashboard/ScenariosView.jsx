@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { Plus, Play, Edit, Trash2, FileText, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Play, Edit, FileText, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { DataTable } from '../ui/DataTable';
 import { Tabs } from '../ui/Tabs';
 import { Modal } from '../ui/Modal';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
+import { Card, CardContent } from '../ui/Card';
 
 const ScenariosView = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [scenarios, setScenarios] = useState([
+  const [scenarios] = useState([
     { id: '1', name: 'Checkout Flow - Black Friday', method: 'POST', target: 'https://api.shop.com/checkout', status: 'APPROVED', lastRun: '2 hours ago', users: 5000 },
     { id: '2', name: 'User Registration Spike', method: 'POST', target: 'https://api.shop.com/register', status: 'DRAFT', lastRun: 'Never', users: 1000 },
     { id: '3', name: 'Product Search Load', method: 'GET', target: 'https://api.shop.com/search', status: 'APPROVED', lastRun: '1 day ago', users: 2500 },
@@ -63,10 +63,10 @@ const ScenariosView = () => {
     {
       key: 'actions',
       header: '',
-      render: () => (
+      render: (row) => (
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" icon={Play} />
-          <Button variant="ghost" size="sm" icon={Edit} />
+          <Button onClick={() => alert(`Starting Load Test Scenario: ${row.name}`)} variant="ghost" size="sm" icon={Play} />
+          <Button onClick={() => alert(`Editing configuration for: ${row.name}`)} variant="ghost" size="sm" icon={Edit} />
         </div>
       )
     }
