@@ -16,6 +16,7 @@ impl HttpClient {
             .pool_max_idle_per_host(config.max_idle_connections)
             .pool_idle_timeout(Duration::from_secs(90))
             .tcp_nodelay(true) // Important for latency testing
+            .danger_accept_invalid_certs(true) // Crucial for internal/mock load test targets
             .build()?;
 
         Ok(Self { inner: client })

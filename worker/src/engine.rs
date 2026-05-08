@@ -71,6 +71,7 @@ impl TaskExecutor {
                         max_latency_ms: stats.max as f64 / 1000.0,
                         actual_rps: stats.count as f64, // Approximate per second since we reset
                         status_codes: stats.status_codes,
+                        error_types: stats.error_types,
                         error_msg: None,
                     };
                     
@@ -85,8 +86,13 @@ impl TaskExecutor {
         // Actually, spawning a task per request at high RPS (e.g. 10k) is bad.
         // Better: Spawn N workers (where N = max_concurrent_users or sensible number) and have them loop against the limiter.
         
-        let concurrency = 50; // Use a reasonable default or calc from RPS/Latency
+        // Calculate a sensible concurrency. If RPS is high, we need more concurrency to keep up.
+        // Rule of thumb: Concurrency = (RPS * Average Latency in seconds) + padding
+        // If we don't know latency, max(50, RPS / 10). Limit to a reasonable max (e.g. 5000)
+        let concurrency = std::cmp::min(5000, std::cmp::max(50, task.rps / 10));
         let mut handles = Vec::new();
+        
+        info!("Calculated concurrency: {} for RPS: {}", concurrency, task.rps);
 
         for _ in 0..concurrency {
             let limiter = limiter.clone();
@@ -110,10 +116,21 @@ impl TaskExecutor {
                             if status >= 200 && status < 400 {
                                 m.record_success(latency_us, status);
                             } else {
-                                m.record_error(Some(status));
+                                m.record_error(Some(status), None);
                             }
                         }
-                        Err(_) => m.record_error(None),
+                        Err(e) => {
+                            let err_type = if e.is_timeout() {
+                                "Timeout".to_string()
+                            } else if e.is_connect() {
+                                "ConnectionError".to_string()
+                            } else if e.is_body() || e.is_decode() {
+                                "BodyError".to_string()
+                            } else {
+                                "UnknownError".to_string()
+                            };
+                            m.record_error(None, Some(err_type));
+                        }
                     }
                 }
             }));
@@ -131,7 +148,7 @@ impl TaskExecutor {
         Ok(())
     }
 
-    async fn send_request(client: &HttpClient, task: &WorkerTask) -> Result<u16> {
+    async fn send_request(client: &HttpClient, task: &WorkerTask) -> Result<u16, reqwest::Error> {
         let mut req_builder = match task.method {
             HttpMethod::GET => client.client().get(&task.target_url),
             HttpMethod::POST => client.client().post(&task.target_url),
@@ -146,15 +163,21 @@ impl TaskExecutor {
             }
         }
 
-        let req = if let Some(body) = &task.body {
+        let req_builder = if let Some(body) = &task.body {
             req_builder.body(body.clone())
+        } else {
+            req_builder
+        };
+        
+        let req = if let Some(t) = task.timeout_seconds {
+            req_builder.timeout(Duration::from_secs(t as u64))
         } else {
             req_builder
         };
         
         match req.send().await {
             Ok(res) => Ok(res.status().as_u16()),
-            Err(e) => Err(e.into()),
+            Err(e) => Err(e),
         }
     }
 }

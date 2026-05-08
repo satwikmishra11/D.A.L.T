@@ -7,6 +7,7 @@ pub struct MetricsCollector {
     success_count: u64,
     error_count: u64,
     status_codes: HashMap<u16, u64>,
+    error_types: HashMap<String, u64>,
 }
 
 impl MetricsCollector {
@@ -17,6 +18,7 @@ impl MetricsCollector {
             success_count: 0,
             error_count: 0,
             status_codes: HashMap::new(),
+            error_types: HashMap::new(),
         }
     }
 
@@ -27,12 +29,16 @@ impl MetricsCollector {
         let _ = self.histogram.record(latency_us);
     }
 
-    pub fn record_error(&mut self, status_code: Option<u16>) {
+    pub fn record_error(&mut self, status_code: Option<u16>, error_type: Option<String>) {
         self.error_count += 1;
         if let Some(code) = status_code {
             *self.status_codes.entry(code).or_insert(0) += 1;
         } else {
             *self.status_codes.entry(0).or_insert(0) += 1; // 0 for network errors
+        }
+        
+        if let Some(err_type) = error_type {
+            *self.error_types.entry(err_type).or_insert(0) += 1;
         }
     }
 
@@ -45,6 +51,7 @@ impl MetricsCollector {
         self.success_count = 0;
         self.error_count = 0;
         self.status_codes.clear();
+        self.error_types.clear();
     }
 
     pub fn get_stats(&self) -> MetricsSnapshot {
@@ -53,6 +60,7 @@ impl MetricsCollector {
             success: self.success_count,
             error: self.error_count,
             status_codes: self.status_codes.clone(),
+            error_types: self.error_types.clone(),
             min: self.histogram.min(),
             max: self.histogram.max(),
             mean: self.histogram.mean(),
@@ -69,6 +77,7 @@ pub struct MetricsSnapshot {
     pub success: u64,
     pub error: u64,
     pub status_codes: HashMap<u16, u64>,
+    pub error_types: HashMap<String, u64>,
     pub min: u64,
     pub max: u64,
     pub mean: f64,

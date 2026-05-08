@@ -20,6 +20,8 @@ public class WorkerTask {
     private int rps; // derived from profile?
     private int durationSeconds;
     private Instant startTime;
+    private Integer timeoutSeconds;
+    private Boolean ignoreTlsErrors;
 
     public static List<WorkerTask> fromScenario(LoadTestScenario scenario, String executionId) {
         List<WorkerTask> tasks = new ArrayList<>();
@@ -42,6 +44,8 @@ public class WorkerTask {
                     .rps(baseRps)
                     .durationSeconds(scenario.getDurationSeconds())
                     .startTime(Instant.now())
+                    .timeoutSeconds(30) // Set default or pull from config
+                    .ignoreTlsErrors(true)
                     .build());
         }
         return tasks;

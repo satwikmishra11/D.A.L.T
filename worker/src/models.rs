@@ -24,6 +24,10 @@ pub struct WorkerTask {
     pub rps: u32,
     pub duration_seconds: u32,
     pub org_id: String,
+    #[serde(default)]
+    pub timeout_seconds: Option<u32>,
+    #[serde(default)]
+    pub ignore_tls_errors: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +55,10 @@ pub struct WorkerResult {
     
     // Status codes tracking
     pub status_codes: HashMap<u16, u64>,
+    
+    // Detailed error types
+    #[serde(default)]
+    pub error_types: HashMap<String, u64>,
     
     pub error_msg: Option<String>,
 }
