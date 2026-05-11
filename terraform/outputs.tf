@@ -24,9 +24,8 @@ output "docdb_endpoint" {
 }
 
 output "docdb_password_secret_name" {
-  description = "AWS Secret name containing the DocDB password (if using secrets manager, otherwise handle securely)"
-  value       = "Check random_password state or implement Secrets Manager"
-  sensitive   = true
+  description = "AWS Secret name containing the DocDB password"
+  value       = aws_secretsmanager_secret.docdb_password.name
 }
 
 output "redis_primary_endpoint" {

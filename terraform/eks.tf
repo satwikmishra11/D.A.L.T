@@ -8,6 +8,9 @@ module "eks" {
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
 
+  # Enable Control Plane Logging for audit and compliance
+  cluster_enabled_log_types = ["audit", "api", "authenticator", "controllerManager", "scheduler"]
+
   create_kms_key = false
   cluster_encryption_config = {
     provider_key_arn = aws_kms_key.main.arn

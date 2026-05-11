@@ -5,6 +5,18 @@ resource "random_password" "docdb_password" {
   special = false
 }
 
+resource "aws_secretsmanager_secret" "docdb_password" {
+  name                    = "${var.project_name}-${var.environment}-docdb-password"
+  description             = "DocumentDB Master Password"
+  kms_key_id              = aws_kms_key.main.arn
+  recovery_window_in_days = 7
+}
+
+resource "aws_secretsmanager_secret_version" "docdb_password" {
+  secret_id     = aws_secretsmanager_secret.docdb_password.id
+  secret_string = random_password.docdb_password.result
+}
+
 resource "aws_security_group" "docdb" {
   name        = "${var.project_name}-${var.environment}-docdb-sg"
   description = "Allow inbound traffic from EKS"
