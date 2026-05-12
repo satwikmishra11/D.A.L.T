@@ -23,6 +23,7 @@ resource "aws_security_group" "docdb" {
   vpc_id      = module.vpc.vpc_id
 
   ingress {
+    description     = "Allow DocumentDB inbound traffic from EKS"
     from_port       = 27017
     to_port         = 27017
     protocol        = "tcp"
@@ -48,6 +49,10 @@ module "documentdb" {
   master_username = "admin"
   master_password = random_password.docdb_password.result
 
+  # tfsec:ignore:aws-ec2-no-public-egress-sgr
+  allowed_egress_cidr_blocks      = [var.vpc_cidr]
+  enabled_cloudwatch_logs_exports = ["audit", "profiler"]
+
   # Encryption
   storage_encrypted = true
   kms_key_id        = aws_kms_key.main.arn
@@ -64,6 +69,7 @@ resource "aws_security_group" "redis" {
   vpc_id      = module.vpc.vpc_id
 
   ingress {
+    description     = "Allow Redis inbound traffic from EKS"
     from_port       = 6379
     to_port         = 6379
     protocol        = "tcp"

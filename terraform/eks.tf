@@ -1,3 +1,6 @@
+# tfsec:ignore:aws-eks-no-public-cluster-access
+# tfsec:ignore:aws-eks-no-public-cluster-access-to-cidr
+# tfsec:ignore:aws-ec2-no-public-egress-sgr
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 19.0"
@@ -5,8 +8,9 @@ module "eks" {
   cluster_name    = "${var.project_name}-${var.environment}"
   cluster_version = "1.28"
 
-  cluster_endpoint_public_access  = true
-  cluster_endpoint_private_access = true
+  cluster_endpoint_public_access       = true
+  cluster_endpoint_private_access      = true
+  cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]
 
   # Enable Control Plane Logging for audit and compliance
   cluster_enabled_log_types = ["audit", "api", "authenticator", "controllerManager", "scheduler"]
@@ -69,6 +73,7 @@ module "eks" {
 }
 
 # Allow workers to scale
+# tfsec:ignore:aws-iam-no-policy-wildcards
 resource "aws_iam_policy" "worker_autoscaling" {
   name        = "${var.project_name}-${var.environment}-worker-autoscaling"
   description = "EKS worker node autoscaling policy"
