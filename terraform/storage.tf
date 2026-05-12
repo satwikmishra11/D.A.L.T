@@ -38,9 +38,9 @@ module "documentdb" {
   stage     = var.environment
   namespace = var.project_name
 
-  vpc_id             = module.vpc.vpc_id
-  subnet_ids         = module.vpc.database_subnets
-  security_group_ids = [aws_security_group.docdb.id]
+  vpc_id                  = module.vpc.vpc_id
+  subnet_ids              = module.vpc.database_subnets
+  allowed_security_groups = [aws_security_group.docdb.id]
 
   instance_class = var.docdb_instance_class
   cluster_size   = var.docdb_cluster_size
