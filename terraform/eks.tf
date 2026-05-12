@@ -35,7 +35,7 @@ module "eks" {
 
       instance_types = ["t3.large"]
       capacity_type  = "ON_DEMAND"
-      
+
       labels = {
         workload = "core"
       }
@@ -49,7 +49,7 @@ module "eks" {
 
       instance_types = ["c6i.large", "c6a.large"]
       capacity_type  = "SPOT" # Cost optimization for load testing
-      
+
       labels = {
         workload = "generator"
       }

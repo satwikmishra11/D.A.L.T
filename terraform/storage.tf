@@ -34,24 +34,24 @@ module "documentdb" {
   source  = "cloudposse/documentdb-cluster/aws"
   version = "0.26.0"
 
-  name           = "${var.project_name}-docdb"
-  stage          = var.environment
-  namespace      = var.project_name
-  
-  vpc_id         = module.vpc.vpc_id
-  subnet_ids     = module.vpc.database_subnets
+  name      = "${var.project_name}-docdb"
+  stage     = var.environment
+  namespace = var.project_name
+
+  vpc_id             = module.vpc.vpc_id
+  subnet_ids         = module.vpc.database_subnets
   security_group_ids = [aws_security_group.docdb.id]
-  
+
   instance_class = var.docdb_instance_class
   cluster_size   = var.docdb_cluster_size
-  
+
   master_username = "admin"
   master_password = random_password.docdb_password.result
-  
+
   # Encryption
   storage_encrypted = true
   kms_key_id        = aws_kms_key.main.arn
-  
+
   # Backups
   retention_period = 7
 }
@@ -77,19 +77,19 @@ resource "aws_elasticache_subnet_group" "default" {
 }
 
 resource "aws_elasticache_replication_group" "default" {
-  replication_group_id          = "${var.project_name}-${var.environment}"
-  description                   = "Redis cluster for Load Test Platform"
-  node_type                     = var.redis_node_type
-  port                          = 6379
-  parameter_group_name          = "default.redis7"
-  subnet_group_name             = aws_elasticache_subnet_group.default.name
-  security_group_ids            = [aws_security_group.redis.id]
-  
-  automatic_failover_enabled    = var.environment == "prod"
-  multi_az_enabled              = var.environment == "prod"
-  
-  num_cache_clusters            = var.environment == "prod" ? 2 : 1
-  at_rest_encryption_enabled    = true
-  kms_key_id                    = aws_kms_key.main.arn
-  transit_encryption_enabled    = true
+  replication_group_id = "${var.project_name}-${var.environment}"
+  description          = "Redis cluster for Load Test Platform"
+  node_type            = var.redis_node_type
+  port                 = 6379
+  parameter_group_name = "default.redis7"
+  subnet_group_name    = aws_elasticache_subnet_group.default.name
+  security_group_ids   = [aws_security_group.redis.id]
+
+  automatic_failover_enabled = var.environment == "prod"
+  multi_az_enabled           = var.environment == "prod"
+
+  num_cache_clusters         = var.environment == "prod" ? 2 : 1
+  at_rest_encryption_enabled = true
+  kms_key_id                 = aws_kms_key.main.arn
+  transit_encryption_enabled = true
 }

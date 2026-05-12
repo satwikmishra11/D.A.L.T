@@ -36,7 +36,7 @@ resource "aws_grafana_workspace" "main" {
   data_sources             = ["PROMETHEUS", "CLOUDWATCH"]
 
   name = "${var.project_name}-${var.environment}-grafana"
-  
+
   tags = {
     Environment = var.environment
     Service     = "Observability"

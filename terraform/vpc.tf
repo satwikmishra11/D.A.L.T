@@ -5,10 +5,10 @@ module "vpc" {
   name = "${var.project_name}-${var.environment}-vpc"
   cidr = var.vpc_cidr
 
-  azs             = var.availability_zones
-  private_subnets = [for k, v in var.availability_zones : cidrsubnet(var.vpc_cidr, 4, k)]
-  public_subnets  = [for k, v in var.availability_zones : cidrsubnet(var.vpc_cidr, 8, k + 48)]
-  database_subnets = [for k, v in var.availability_zones : cidrsubnet(var.vpc_cidr, 8, k + 52)]
+  azs                 = var.availability_zones
+  private_subnets     = [for k, v in var.availability_zones : cidrsubnet(var.vpc_cidr, 4, k)]
+  public_subnets      = [for k, v in var.availability_zones : cidrsubnet(var.vpc_cidr, 8, k + 48)]
+  database_subnets    = [for k, v in var.availability_zones : cidrsubnet(var.vpc_cidr, 8, k + 52)]
   elasticache_subnets = [for k, v in var.availability_zones : cidrsubnet(var.vpc_cidr, 8, k + 56)]
 
   enable_nat_gateway     = true
