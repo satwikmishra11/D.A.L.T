@@ -43,13 +43,17 @@ module "eks" {
       labels = {
         workload = "core"
       }
+      
+      iam_role_additional_policies = {
+        CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+      }
     }
 
     # Scalable workers (Load Generators)
     workers = {
       min_size     = 0
       max_size     = 50
-      desired_size = 0 # Controlled by Cluster Autoscaler
+      desired_size = 0 # Controlled by Cluster Autoscaler/Karpenter
 
       instance_types = ["c6i.large", "c6a.large"]
       capacity_type  = "SPOT" # Cost optimization for load testing
@@ -64,6 +68,10 @@ module "eks" {
           value  = "generator"
           effect = "NO_SCHEDULE"
         }
+      }
+      
+      iam_role_additional_policies = {
+        CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
       }
     }
   }
@@ -111,5 +119,29 @@ module "load_balancer_controller_irsa_role" {
       provider_arn               = module.eks.oidc_provider_arn
       namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
     }
+  }
+}
+
+# ========== Karpenter (Modern Node Autoscaling) ==========
+# Highly professional and cutting edge alternative to Cluster Autoscaler
+# Provides rapid, intelligent, just-in-time node provisioning.
+
+module "karpenter" {
+  source  = "terraform-aws-modules/eks/aws//modules/karpenter"
+  version = "~> 19.0"
+
+  cluster_name = module.eks.cluster_name
+
+  irsa_oidc_provider_arn          = module.eks.oidc_provider_arn
+  irsa_namespace_service_accounts = ["karpenter:karpenter"]
+
+  # Attach additional IAM policies to the Karpenter node IAM role
+  iam_role_additional_policies = {
+    AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  }
+
+  tags = {
+    Environment = var.environment
+    Service     = "Karpenter"
   }
 }

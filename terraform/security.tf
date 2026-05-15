@@ -84,3 +84,28 @@ resource "aws_wafv2_web_acl" "api_protection" {
     Service     = "Security"
   }
 }
+
+# ========== Amazon GuardDuty (Threat Detection) ==========
+# Highly professional feature for continuous security monitoring
+# and malicious activity detection.
+
+resource "aws_guardduty_detector" "main" {
+  enable                       = true
+  finding_publishing_frequency = "FIFTEEN_MINUTES"
+
+  datasources {
+    s3_logs {
+      enable = true
+    }
+    kubernetes {
+      audit_logs {
+        enable = true
+      }
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Service     = "Security"
+  }
+}

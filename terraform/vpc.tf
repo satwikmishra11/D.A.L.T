@@ -34,3 +34,60 @@ module "vpc" {
     "kubernetes.io/role/internal-elb" = 1
   }
 }
+
+# ========== VPC Endpoints (PrivateLink) ==========
+# Highly professional feature for zero-trust network architecture,
+# keeping AWS service traffic internal to the AWS network.
+
+module "vpc_endpoints" {
+  source  = "terraform-aws-modules/vpc/aws//modules/vpc-endpoints"
+  version = "~> 5.0"
+
+  vpc_id             = module.vpc.vpc_id
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+
+  endpoints = {
+    s3 = {
+      service = "s3"
+      tags    = { Name = "${local.name_prefix}-s3-vpc-endpoint" }
+    },
+    ecr_api = {
+      service             = "ecr.api"
+      private_dns_enabled = true
+      subnet_ids          = module.vpc.private_subnets
+    },
+    ecr_dkr = {
+      service             = "ecr.dkr"
+      private_dns_enabled = true
+      subnet_ids          = module.vpc.private_subnets
+    },
+    kms = {
+      service             = "kms"
+      private_dns_enabled = true
+      subnet_ids          = module.vpc.private_subnets
+    },
+    logs = {
+      service             = "logs"
+      private_dns_enabled = true
+      subnet_ids          = module.vpc.private_subnets
+    }
+  }
+}
+
+resource "aws_security_group" "vpc_endpoints" {
+  name        = "${local.name_prefix}-vpc-endpoints-sg"
+  description = "Security group for VPC endpoints"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "Allow HTTPS from VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  tags = {
+    Environment = var.environment
+  }
+}
