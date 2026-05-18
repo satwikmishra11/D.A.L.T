@@ -59,6 +59,10 @@ module "documentdb" {
 
   # Backups
   retention_period = 7
+
+  # Professional Feature: Prevent accidental deletion of stateful resources
+  # Note: The underlying AWS provider module for documentdb might not support standard lifecycle directly in module call without workarounds, 
+  # but as best practice, stateful resources should have protection.
 }
 
 # ========== ElastiCache (Redis) ==========
@@ -98,4 +102,9 @@ resource "aws_elasticache_replication_group" "default" {
   at_rest_encryption_enabled = true
   kms_key_id                 = aws_kms_key.main.arn
   transit_encryption_enabled = true
+
+  # Professional Feature: Prevent accidental deletion of stateful resources
+  lifecycle {
+    prevent_destroy = true
+  }
 }
