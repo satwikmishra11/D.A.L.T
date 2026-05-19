@@ -23,10 +23,10 @@ resource "aws_iam_role" "github_actions" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringLike = {
-            "token.actions.githubusercontent.com:sub": "repo:satwikmishra11/D.A.L.T:*"
+            "token.actions.githubusercontent.com:sub" : "repo:satwikmishra11/D.A.L.T:*"
           }
           StringEquals = {
-            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:aud" : "sts.amazonaws.com"
           }
         }
       }
@@ -43,5 +43,5 @@ resource "aws_iam_role" "github_actions" {
 # but in a strictly professional setup, you would scope this down significantly.
 resource "aws_iam_role_policy_attachment" "github_actions_admin" {
   role       = aws_iam_role.github_actions.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess" 
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }

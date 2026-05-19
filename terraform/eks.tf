@@ -59,7 +59,7 @@ module "eks" {
       labels = {
         workload = "core"
       }
-      
+
       iam_role_additional_policies = {
         CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
       }
@@ -85,7 +85,7 @@ module "eks" {
           effect = "NO_SCHEDULE"
         }
       }
-      
+
       iam_role_additional_policies = {
         CloudWatchAgentServerPolicy = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
       }
