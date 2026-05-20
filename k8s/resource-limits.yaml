@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: loadtest-limit-range
+  namespace: loadtest
+spec:
+  limits:
+  - default:
+      cpu: "1000m"
+      memory: "1Gi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Container
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: loadtest-resource-quota
+  namespace: loadtest
+spec:
+  hard:
+    requests.cpu: "50"
+    requests.memory: "50Gi"
+    limits.cpu: "200"
+    limits.memory: "150Gi"
+    pods: "150"

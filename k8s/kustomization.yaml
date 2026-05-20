@@ -6,6 +6,7 @@ namespace: loadtest
 resources:
   - namespace.yaml
   - priority-classes.yaml
+  - resource-limits.yaml
   - service-accounts.yaml
   - configmaps.yaml
   - secrets.yaml
