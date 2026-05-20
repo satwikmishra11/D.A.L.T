@@ -48,6 +48,14 @@ spec:
       containers:
       - name: redis
         image: redis:7-alpine
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
         command: ["redis-server", "--appendonly", "yes"]
         ports:
         - containerPort: 6379
