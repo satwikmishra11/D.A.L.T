@@ -28,6 +28,38 @@ pub struct WorkerTask {
     pub timeout_seconds: Option<u32>,
     #[serde(default)]
     pub ignore_tls_errors: Option<bool>,
+    pub load_profile: Option<LoadProfile>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ProfileType {
+    CONSTANT,
+    #[serde(rename = "RAMP_UP")]
+    RampUp,
+    SPIKE,
+    BURST,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BurstConfig {
+    #[serde(rename = "startSecond")]
+    pub start_second: u32,
+    #[serde(rename = "durationSeconds")]
+    pub duration_seconds: u32,
+    pub rps: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadProfile {
+    #[serde(rename = "type")]
+    pub profile_type: ProfileType,
+    #[serde(rename = "initialRps")]
+    pub initial_rps: u32,
+    #[serde(rename = "targetRps")]
+    pub target_rps: u32,
+    #[serde(rename = "rampUpSeconds")]
+    pub ramp_up_seconds: u32,
+    pub bursts: Option<Vec<BurstConfig>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
