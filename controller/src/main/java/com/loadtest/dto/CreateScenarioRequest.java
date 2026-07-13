@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import com.loadtest.model.*;
-import javax.validation.constraints.*;
+import jakarta.validation.constraints.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -20,53 +20,40 @@ public class CreateScenarioRequest {
     @Size(min = 3, max = 100)
     private String name;
     
-    @Size(max = 500)
     private String description;
     
     @NotBlank(message = "Target URL is required")
-    @Pattern(regexp = "^https?://.*", message = "Must be valid HTTP/HTTPS URL")
+    @Pattern(regexp = "^https?://.*", message = "Must be a valid HTTP/HTTPS URL")
     private String targetUrl;
     
-    @NotNull
+    @NotNull(message = "HTTP Method is required")
     private HttpMethod method;
     
     private Map<String, String> headers;
     private String body;
     
     @Min(value = 1, message = "Duration must be at least 1 second")
-    @Max(value = 7200, message = "Duration cannot exceed 2 hours")
     private int durationSeconds;
     
-    @Min(value = 1, message = "Must have at least 1 worker")
-    @Max(value = 100, message = "Cannot exceed 100 workers")
+    @Min(value = 1, message = "Number of workers must be at least 1")
+    @Max(value = 100, message = "Maximum 100 workers allowed")
     private int numWorkers;
     
-    @NotNull
     private LoadProfileRequest loadProfile;
-    
-    private String environment;
-    private List<String> tags;
     private SlaConfigRequest slaConfig;
     private List<AlertConfigRequest> alerts;
+    private Boolean ignoreTlsErrors;
 }
 
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoadProfileRequest {
-    @NotNull
     private ProfileType type;
-    
-    @Min(1)
     private int initialRps;
-    
     private int targetRps;
     private int rampUpSeconds;
     private List<BurstConfigRequest> bursts;
-    private ThinkTimeRequest thinkTime;
-    private ConnectionPoolConfigRequest connectionPool;
-    private RetryConfigRequest retryConfig;
 }
 
 @Data
@@ -84,16 +71,14 @@ public class BurstConfigRequest {
 public class ThinkTimeRequest {
     private int minMs;
     private int maxMs;
-    private ThinkTimeDistribution distribution;
 }
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConnectionPoolConfigRequest {
-    private int maxConnectionsPerWorker = 100;
-    private int connectionTimeoutMs = 5000;
-    private int requestTimeoutMs = 30000;
+    private int maxConnections;
+    private int idleTimeoutMs;
 }
 
 @Data
