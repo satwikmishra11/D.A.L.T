@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex as TokioMutex;
 use tokio::time::{sleep, Duration};
 use tracing::{info, warn, error, instrument};
-use sysinfo::{System, SystemExt, CpuExt};
+use sysinfo::System;
 
 #[derive(Clone)]
 struct WorkerState {

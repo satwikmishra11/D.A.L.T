@@ -1,20 +1,95 @@
-import React, { useState } from 'react';
-import { Plus, Play, Edit, FileText, CheckCircle, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Play, Square, Edit, FileText, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { DataTable } from '../ui/DataTable';
 import { Tabs } from '../ui/Tabs';
 import { Modal } from '../ui/Modal';
 import { Card, CardContent } from '../ui/Card';
+import { scenarioAPI } from '../../services/api';
+import ScenarioForm from '../ScenarioForm';
 
 const ScenariosView = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [scenarios] = useState([
-    { id: '1', name: 'Checkout Flow - Black Friday', method: 'POST', target: 'https://api.shop.com/checkout', status: 'APPROVED', lastRun: '2 hours ago', users: 5000 },
-    { id: '2', name: 'User Registration Spike', method: 'POST', target: 'https://api.shop.com/register', status: 'DRAFT', lastRun: 'Never', users: 1000 },
-    { id: '3', name: 'Product Search Load', method: 'GET', target: 'https://api.shop.com/search', status: 'APPROVED', lastRun: '1 day ago', users: 2500 },
-    { id: '4', name: 'Cart Update Stress', method: 'PUT', target: 'https://api.shop.com/cart', status: 'PENDING', lastRun: '5 days ago', users: 3000 },
-  ]);
+  const [scenarios, setScenarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingScenario, setEditingScenario] = useState(null);
+  
+  // Default new scenario template
+  const defaultNewScenario = {
+    name: '',
+    description: '',
+    targetUrl: '',
+    method: 'GET',
+    headers: {},
+    body: '',
+    durationSeconds: 60,
+    numWorkers: 1,
+    loadProfile: {
+      type: 'CONSTANT',
+      initialRps: 10,
+      targetRps: 10,
+      rampUpSeconds: 0,
+      bursts: []
+    },
+    slaConfig: {
+      minSuccessRate: 99.0,
+      maxAvgLatencyMs: 500.0,
+      maxP95LatencyMs: 1000.0,
+      maxP99LatencyMs: 2000.0,
+      maxErrorRate: 1.0
+    },
+    alerts: [],
+    ignoreTlsErrors: true
+  };
+
+  const [currentFormScenario, setCurrentFormScenario] = useState(defaultNewScenario);
+
+  const loadScenarios = async () => {
+    try {
+      setLoading(true);
+      const res = await scenarioAPI.getAll();
+      setScenarios(res.data);
+    } catch (err) {
+      console.error('Failed to load scenarios', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadScenarios();
+  }, []);
+
+  const handleStart = async (id) => {
+    try {
+      await scenarioAPI.start(id);
+      alert('Load test execution started successfully!');
+      loadScenarios();
+    } catch (err) {
+      alert(`Failed to start load test: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+  const handleStop = async (id) => {
+    try {
+      await scenarioAPI.stop(id);
+      alert('Load test execution stopped!');
+      loadScenarios();
+    } catch (err) {
+      alert(`Failed to stop load test: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+  const handleCreateOrUpdate = async () => {
+    try {
+      await scenarioAPI.create(currentFormScenario);
+      setIsModalOpen(false);
+      loadScenarios();
+    } catch (err) {
+      alert(`Failed to save scenario: ${err.response?.data?.message || err.message}`);
+    }
+  };
 
   const tabs = [
     { id: 'all', label: 'All Scenarios', icon: FileText },
@@ -24,7 +99,7 @@ const ScenariosView = () => {
 
   const filteredData = activeTab === 'all' 
     ? scenarios 
-    : scenarios.filter(s => s.status.toLowerCase() === activeTab);
+    : scenarios.filter(s => s.status?.toLowerCase() === activeTab);
 
   const columns = [
     { 
@@ -33,7 +108,7 @@ const ScenariosView = () => {
       render: (row) => (
         <div>
           <div className="font-bold text-gray-900">{row.name}</div>
-          <div className="text-xs text-gray-500 font-mono mt-0.5">{row.method} {row.target}</div>
+          <div className="text-xs text-gray-500 font-mono mt-0.5">{row.method} {row.targetUrl}</div>
         </div>
       )
     },
@@ -50,13 +125,13 @@ const ScenariosView = () => {
         </span>
       )
     },
-    { key: 'users', header: 'Virtual Users', render: (row) => row.users.toLocaleString() },
+    { key: 'users', header: 'Virtual Users', render: (row) => row.numWorkers?.toLocaleString() || '1' },
     { 
       key: 'lastRun', 
       header: 'Last Execution', 
       render: (row) => (
         <div className="flex items-center gap-1 text-gray-500">
-          <Clock size={14} /> {row.lastRun}
+          <Clock size={14} /> {row.lastExecutedAt ? new Date(row.lastExecutedAt).toLocaleDateString() : 'Never'}
         </div>
       )
     },
@@ -65,8 +140,16 @@ const ScenariosView = () => {
       header: '',
       render: (row) => (
         <div className="flex items-center gap-2">
-          <Button onClick={() => alert(`Starting Load Test Scenario: ${row.name}`)} variant="ghost" size="sm" icon={Play} />
-          <Button onClick={() => alert(`Editing configuration for: ${row.name}`)} variant="ghost" size="sm" icon={Edit} />
+          {row.running ? (
+            <Button onClick={() => handleStop(row.id)} variant="ghost" size="sm" icon={Square} className="text-red-600 hover:bg-red-50" />
+          ) : (
+            <Button onClick={() => handleStart(row.id)} variant="ghost" size="sm" icon={Play} disabled={row.status !== 'APPROVED'} />
+          )}
+          <Button onClick={() => {
+            setCurrentFormScenario(row);
+            setEditingScenario(row.id);
+            setIsModalOpen(true);
+          }} variant="ghost" size="sm" icon={Edit} />
         </div>
       )
     }
@@ -79,7 +162,11 @@ const ScenariosView = () => {
           <h1 className="text-2xl font-bold text-gray-900">Test Scenarios</h1>
           <p className="text-gray-500 mt-1">Manage and execute your load testing configurations.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} icon={Plus}>
+        <Button onClick={() => {
+          setCurrentFormScenario(defaultNewScenario);
+          setEditingScenario(null);
+          setIsModalOpen(true);
+        }} icon={Plus}>
           New Scenario
         </Button>
       </div>
@@ -90,10 +177,14 @@ const ScenariosView = () => {
                 <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
             </div>
             <div className="p-6 pt-0">
-                <DataTable 
-                    columns={columns} 
-                    data={filteredData} 
-                />
+                {loading ? (
+                    <div className="py-10 text-center text-gray-500">Loading scenarios...</div>
+                ) : (
+                    <DataTable 
+                        columns={columns} 
+                        data={filteredData} 
+                    />
+                )}
             </div>
         </CardContent>
       </Card>
@@ -101,38 +192,21 @@ const ScenariosView = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Create New Scenario"
+        title={editingScenario ? "Edit Scenario" : "Create New Scenario"}
+        className="max-w-4xl"
         footer={
-          <>
+          <div className="flex justify-end gap-2 p-4 border-t w-full">
             <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button onClick={() => setIsModalOpen(false)}>Create Scenario</Button>
-          </>
+            <Button onClick={handleCreateOrUpdate}>{editingScenario ? "Save Changes" : "Create Scenario"}</Button>
+          </div>
         }
       >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Scenario Name</label>
-            <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-aws-orange focus:border-aws-orange" placeholder="e.g. Black Friday Checkout" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    <option>GET</option>
-                    <option>POST</option>
-                    <option>PUT</option>
-                    <option>DELETE</option>
-                </select>
-             </div>
-             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Virtual Users</label>
-                <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="1000" />
-             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Target URL</label>
-            <input type="url" className="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="https://api.example.com/v1/..." />
-          </div>
+        <div className="max-h-[60vh] overflow-y-auto p-2">
+          <ScenarioForm 
+            scenario={currentFormScenario} 
+            onChange={setCurrentFormScenario}
+            creating={!editingScenario}
+          />
         </div>
       </Modal>
     </div>

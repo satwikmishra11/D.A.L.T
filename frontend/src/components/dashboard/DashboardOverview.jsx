@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, Activity, AlertTriangle, Clock, Zap, ArrowRight, Star, Server, Shield, Database } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, AlertTriangle, Clock, Zap, ArrowRight, Star, Server, Shield, Database, CheckCircle } from 'lucide-react';
 import AIInsights from './AIInsights';
 import TopologyMap from './TopologyMap';
 import LiveLogViewer from './LiveLogViewer';
 import ScenarioFlow from './ScenarioFlow';
+import { dashboardAPI } from '../../services/api';
 
 const StatCard = ({ title, value, subtext, trend, icon: Icon, color }) => (
   <div className="stat-card group">
@@ -24,13 +25,13 @@ const StatCard = ({ title, value, subtext, trend, icon: Icon, color }) => (
       <span className={trend > 0 ? "text-[#0073bb] font-bold" : "text-[#d13212] font-bold"}>
         {Math.abs(trend)}%
       </span>
-      <span className="text-[#545b64]">vs last week</span>
+      <span className="text-[#545b64]">{subtext || "vs last period"}</span>
     </div>
   </div>
 );
 
 const HealthScoreGauge = ({ score }) => {
-  const circumference = 2 * Math.PI * 52; // increased radius
+  const circumference = 2 * Math.PI * 52;
   const offset = circumference - (score / 100) * circumference;
   
   let color = 'text-green-500';
@@ -71,13 +72,31 @@ const HealthScoreGauge = ({ score }) => {
   );
 };
 
-const DashboardOverview = ({ analyticsData }) => {
+const DashboardOverview = () => {
   const [timeRange, setTimeRange] = useState('1H');
   const [isExporting, setIsExporting] = useState(false);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for the chart
-  const data = [
+  const fetchSummary = async () => {
+    try {
+      setLoading(true);
+      const res = await dashboardAPI.getSummary();
+      setSummary(res.data);
+    } catch (err) {
+      console.error('Failed to fetch dashboard summary', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSummary();
+  }, []);
+
+  // Mock chart data representing real-time correlation
+  const chartData = [
     { time: '10:00', rps: 400, latency: 240 },
     { time: '10:05', rps: 300, latency: 139 },
     { time: '10:10', rps: 550, latency: 380 },
@@ -93,7 +112,7 @@ const DashboardOverview = ({ analyticsData }) => {
     setIsExporting(true);
     setTimeout(() => {
       const csvContent = "data:text/csv;charset=utf-8,Time,RPS,Latency\n" 
-        + data.map(row => `${row.time},${row.rps},${row.latency}`).join("\n");
+        + chartData.map(row => `${row.time},${row.rps},${row.latency}`).join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
@@ -109,9 +128,15 @@ const DashboardOverview = ({ analyticsData }) => {
     setIsCheckingHealth(true);
     setTimeout(() => {
       setIsCheckingHealth(false);
-      alert("✅ Health Check Passed: All 12 scenarios are operational and worker nodes are responsive.");
-    }, 1500);
+      alert(`✅ Health Check Completed: ${summary?.activeWorkers || 0} worker nodes active. Queue is operational.`);
+    }, 1200);
   };
+
+  // Compute stats values with defaults
+  const totalScenarios = summary?.totalScenarios || 0;
+  const activeWorkers = summary?.activeWorkers || 0;
+  const activeAlerts = summary?.activeAlerts || 0;
+  const successRate = summary?.avgSuccessRate || 100.0;
 
   return (
     <div className="space-y-6">
@@ -133,31 +158,39 @@ const DashboardOverview = ({ analyticsData }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Recently Visited */}
+        {/* Recently Run Scenarios */}
         <div className="card col-span-2">
-          <h3 className="font-bold text-[16px] text-[#16191f] mb-4">Recently visited</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-             {[
-               { name: 'Load Testing Engine', icon: Activity, group: 'Compute' },
-               { name: 'Kubernetes Clusters', icon: Server, group: 'Containers' },
-               { name: 'IAM Dashboard', icon: Shield, group: 'Security' },
-               { name: 'RDS Instances', icon: Database, group: 'Database' }
-             ].map(service => (
-               <div key={service.name} className="border border-[#eaeded] rounded-sm p-3 hover:border-[#879596] cursor-pointer transition-colors group">
-                 <div className="flex items-center gap-2 mb-2">
-                    <service.icon size={16} className="text-[#0073bb] group-hover:text-[#ec7211] transition-colors" />
-                    <span className="text-[13px] font-bold text-[#0073bb] group-hover:text-[#ec7211] hover:underline truncate">{service.name}</span>
+          <h3 className="font-bold text-[16px] text-[#16191f] mb-4">Recent Test Scenarios</h3>
+          {loading ? (
+             <div className="py-6 text-center text-gray-500">Loading recent runs...</div>
+          ) : !summary?.recentScenarios || summary.recentScenarios.length === 0 ? (
+             <div className="py-6 text-center text-gray-500">No recent scenarios found. Create one to start testing.</div>
+          ) : (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {summary.recentScenarios.map(sc => (
+                 <div key={sc.id} className="border border-[#eaeded] rounded-sm p-3 hover:border-[#879596] cursor-pointer transition-colors group">
+                   <div className="flex items-center justify-between mb-2">
+                      <span className="text-[13px] font-bold text-[#0073bb] group-hover:text-[#ec7211] hover:underline truncate max-w-[70%]">{sc.name}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        sc.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        sc.status === 'RUNNING' ? 'bg-blue-100 text-blue-800 animate-pulse' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>{sc.status}</span>
+                   </div>
+                   <div className="text-[11px] text-[#545b64] flex justify-between">
+                     <span>Success: {sc.successRate ? sc.successRate.toFixed(1) : '0'}%</span>
+                     <span>Latency: {sc.avgLatency ? Math.round(sc.avgLatency) : '0'}ms</span>
+                   </div>
                  </div>
-                 <div className="text-[11px] text-[#545b64] uppercase tracking-wider">{service.group}</div>
-               </div>
-             ))}
-          </div>
+               ))}
+             </div>
+          )}
         </div>
 
-        {/* Favorites */}
+        {/* Favorites / Quick Links */}
         <div className="card col-span-1">
           <h3 className="font-bold text-[16px] text-[#16191f] mb-4 flex justify-between items-center">
-            Favorites <Star size={16} className="text-[#879596]" />
+            Quick Links <Star size={16} className="text-[#879596]" />
           </h3>
           <div className="space-y-1">
              {[
@@ -165,10 +198,10 @@ const DashboardOverview = ({ analyticsData }) => {
                'ArgoCD Sync Status',
                'Production Grafana Dashboards'
              ].map(fav => (
-               <div key={fav} className="flex items-center gap-2 py-2 border-b border-[#eaeded] last:border-0 cursor-pointer group">
-                  <Star size={14} className="text-[#ec7211]" fill="#ec7211" />
-                  <span className="text-[13px] text-[#0073bb] group-hover:underline">{fav}</span>
-               </div>
+                <div key={fav} className="flex items-center gap-2 py-2 border-b border-[#eaeded] last:border-0 cursor-pointer group">
+                   <Star size={14} className="text-[#ec7211]" fill="#ec7211" />
+                   <span className="text-[13px] text-[#0073bb] group-hover:underline">{fav}</span>
+                </div>
              ))}
           </div>
         </div>
@@ -177,10 +210,10 @@ const DashboardOverview = ({ analyticsData }) => {
       {/* Global Health and Stats Grid */}
       <h3 className="font-bold text-[16px] text-[#16191f] pt-4">Global Health Overview</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Active Incidents" value="0" trend={-100} icon={AlertTriangle} color="green" />
-        <StatCard title="Total Deployments (24h)" value="142" trend={12.3} icon={Activity} color="blue" />
-        <StatCard title="Avg Pipeline Duration" value="4m 12s" trend={-2.4} icon={Clock} color="purple" />
-        <StatCard title="Test Scenarios Running" value="12" trend={8.5} icon={Zap} color="orange" />
+        <StatCard title="Active Incidents (Alerts)" value={activeAlerts.toString()} trend={activeAlerts > 0 ? 100 : -100} icon={AlertTriangle} subtext="active alerts currently" />
+        <StatCard title="Total Scenarios" value={totalScenarios.toString()} trend={5.2} icon={Activity} subtext="scenarios configured" />
+        <StatCard title="Average Success Rate" value={`${successRate.toFixed(1)}%`} trend={successRate >= 99.0 ? 0.5 : -2.4} icon={CheckCircle} subtext="across all runs" />
+        <StatCard title="Active Workers" value={activeWorkers.toString()} trend={activeWorkers > 0 ? 20.0 : -100.0} icon={Zap} subtext="workers online" />
       </div>
 
       {/* Bento Grid Layout */}
@@ -207,7 +240,7 @@ const DashboardOverview = ({ analyticsData }) => {
           </div>
           <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRps" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2}/>
@@ -240,7 +273,7 @@ const DashboardOverview = ({ analyticsData }) => {
         </div>
 
         {/* AI Insights Panel */}
-        <AIInsights />
+        <AIInsights summary={summary} />
 
         {/* Topology Map */}
         <TopologyMap />
@@ -249,78 +282,44 @@ const DashboardOverview = ({ analyticsData }) => {
         <div className="space-y-6 lg:col-span-1 flex flex-col h-full">
           <div className="card flex flex-col items-center py-8 relative overflow-hidden flex-1">
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-400 to-green-600"></div>
-            <HealthScoreGauge score={85} />
+            <HealthScoreGauge score={Math.round(successRate)} />
             <div className="mt-6 text-center px-6">
-              <h4 className="text-xl font-bold text-gray-900">System Healthy</h4>
+              <h4 className="text-xl font-bold text-gray-900">System Status</h4>
               <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                Global latency is within 99th percentile SLA.
+                Global average success rate is {successRate.toFixed(1)}%.
               </p>
             </div>
             <button 
               onClick={() => alert('Opening Detailed Topology and Resource Analysis...')} 
-              className="mt-4 text-aws-orange text-sm font-bold hover:text-yellow-600 flex items-center gap-1 transition-colors"
+              className="mt-8 flex items-center gap-2 text-sm font-bold text-[#0073bb] hover:text-[#ec7211] transition-colors"
             >
-              View Detailed Analysis <ArrowRight size={14} />
+              Resource Analysis <ArrowRight size={14} />
             </button>
           </div>
-
-          <div className="card">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-900">Worker Node Resources</h3>
-                <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">3 Nodes</span>
-            </div>
-            <div className="space-y-4">
-                <div>
-                    <div className="flex justify-between text-xs mb-1"><span className="font-medium text-gray-700">Avg CPU Usage</span><span className="font-bold text-gray-900">72%</span></div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: '72%' }}></div>
-                    </div>
-                </div>
-                <div>
-                    <div className="flex justify-between text-xs mb-1"><span className="font-medium text-gray-700">Memory Allocation</span><span className="font-bold text-gray-900">4.2 / 8 GB</span></div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                        <div className="bg-purple-500 h-2 rounded-full" style={{ width: '52%' }}></div>
-                    </div>
-                </div>
-                <div>
-                    <div className="flex justify-between text-xs mb-1"><span className="font-medium text-gray-700">Network I/O</span><span className="font-bold text-gray-900">1.2 GB/s</span></div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
-                        <div className="bg-green-500 h-2 rounded-full" style={{ width: '85%' }}></div>
-                    </div>
-                </div>
-            </div>
-          </div>
-
+          
           <div className="card flex-1">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-900">Recent Alerts</h3>
-                <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">3 New</span>
-            </div>
-            <div className="space-y-3">
-              {[1, 2].map((_, i) => (
-                <div key={i} className="flex gap-3 items-start p-3 bg-red-50 rounded-xl border border-red-100 hover:bg-red-100/50 transition-colors cursor-pointer">
-                  <div className="bg-red-200 p-1.5 rounded-lg shrink-0">
-                    <AlertTriangle size={16} className="text-red-600" />
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-bold text-gray-900">High Latency</h5>
-                    <p className="text-xs text-gray-600 mt-0.5 leading-snug truncate w-40">Scenario "Checkout Flow"</p>
-                  </div>
-                </div>
-              ))}
+            <h4 className="font-bold text-lg text-gray-900 mb-4">Live Activity Streams</h4>
+            <div className="relative border-l border-gray-100 pl-4 space-y-6">
+              <div className="relative">
+                <div className="absolute -left-[21px] top-1.5 w-3 h-3 rounded-full bg-green-500 ring-4 ring-white"></div>
+                <div className="text-xs text-gray-400">Just now</div>
+                <div className="text-sm font-medium text-gray-900 mt-0.5">Metrics engine synchronized</div>
+              </div>
+              <div className="relative">
+                <div className="absolute -left-[21px] top-1.5 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white"></div>
+                <div className="text-xs text-gray-400">12 minutes ago</div>
+                <div className="text-sm font-medium text-gray-900 mt-0.5">Worker node scale up requested</div>
+              </div>
             </div>
           </div>
         </div>
+
       </div>
 
-      {/* Advanced Features Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <ScenarioFlow />
-        </div>
-        <div className="lg:col-span-2">
-          <LiveLogViewer />
-        </div>
+      {/* Real-time Topology & Logs Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
+        <LiveLogViewer />
+        <ScenarioFlow />
       </div>
     </div>
   );
