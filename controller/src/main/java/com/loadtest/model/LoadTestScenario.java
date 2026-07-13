@@ -34,6 +34,11 @@ public class LoadTestScenario {
     private Instant lastExecutedAt;
     private boolean running;
     
+    private String approvedBy;
+    private String approvalComment;
+    private SlaConfig slaConfig;
+    private boolean ignoreTlsErrors;
+    
     private Instant createdAt;
     private Instant startedAt;
     private Instant completedAt;

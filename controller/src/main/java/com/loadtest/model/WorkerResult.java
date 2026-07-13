@@ -28,4 +28,7 @@ public class WorkerResult {
     private double avgLatencyMs;
     private double p95LatencyMs;
     private double p99LatencyMs;
+    
+    private java.util.Map<Integer, Long> statusCodes;
+    private java.util.Map<String, Long> errorTypes;
 }
