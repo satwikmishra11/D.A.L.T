@@ -174,6 +174,8 @@ public class DashboardController {
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 class SystemHealth {
     private int activeWorkers;
     private long taskQueueSize;
