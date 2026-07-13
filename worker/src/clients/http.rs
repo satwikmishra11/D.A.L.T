@@ -10,13 +10,17 @@ pub struct HttpClient {
 
 impl HttpClient {
     pub fn new(config: &HttpConfig) -> Result<Self> {
+        Self::new_with_tls(config, true) // default to true for backward compatibility
+    }
+
+    pub fn new_with_tls(config: &HttpConfig, ignore_tls_errors: bool) -> Result<Self> {
         let client = ClientBuilder::new()
             .timeout(Duration::from_secs(config.timeout_seconds))
             .connect_timeout(Duration::from_secs(config.connect_timeout_seconds))
             .pool_max_idle_per_host(config.max_idle_connections)
             .pool_idle_timeout(Duration::from_secs(90))
-            .tcp_nodelay(true) // Important for latency testing
-            .danger_accept_invalid_certs(true) // Crucial for internal/mock load test targets
+            .tcp_nodelay(true)
+            .danger_accept_invalid_certs(ignore_tls_errors)
             .build()?;
 
         Ok(Self { inner: client })

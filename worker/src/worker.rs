@@ -124,7 +124,15 @@ impl WorkerService {
             state.current_task_id = Some(task.task_id.clone());
         }
         
-        let executor = TaskExecutor::new(self.http.clone(), self.config.worker_id.clone());
+        let ignore_tls = task.ignore_tls_errors.unwrap_or(true);
+        let http_client = match crate::clients::http::HttpClient::new_with_tls(&self.config.http, ignore_tls) {
+            Ok(c) => c,
+            Err(e) => {
+                error!("Failed to build http client with dynamic TLS config: {}, falling back to default client", e);
+                self.http.clone()
+            }
+        };
+        let executor = TaskExecutor::new(http_client, self.config.worker_id.clone());
         let redis = self.redis.clone();
         
         let is_cancelled = Arc::new(AtomicBool::new(false));
