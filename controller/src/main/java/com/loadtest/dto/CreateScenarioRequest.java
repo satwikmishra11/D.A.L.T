@@ -43,71 +43,71 @@ public class CreateScenarioRequest {
     private SlaConfigRequest slaConfig;
     private List<AlertConfigRequest> alerts;
     private Boolean ignoreTlsErrors;
-}
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class LoadProfileRequest {
-    private ProfileType type;
-    private int initialRps;
-    private int targetRps;
-    private int rampUpSeconds;
-    private List<BurstConfigRequest> bursts;
-}
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LoadProfileRequest {
+        private ProfileType type;
+        private int initialRps;
+        private int targetRps;
+        private int rampUpSeconds;
+        private List<BurstConfigRequest> bursts;
+    }
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class BurstConfigRequest {
-    private int startSecond;
-    private int durationSeconds;
-    private int rps;
-}
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BurstConfigRequest {
+        private int startSecond;
+        private int durationSeconds;
+        private int rps;
+    }
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class ThinkTimeRequest {
-    private int minMs;
-    private int maxMs;
-}
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ThinkTimeRequest {
+        private int minMs;
+        private int maxMs;
+    }
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class ConnectionPoolConfigRequest {
-    private int maxConnections;
-    private int idleTimeoutMs;
-}
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ConnectionPoolConfigRequest {
+        private int maxConnections;
+        private int idleTimeoutMs;
+    }
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class RetryConfigRequest {
-    private boolean enabled = false;
-    private int maxRetries = 3;
-    private int retryDelayMs = 1000;
-    private List<Integer> retryableStatusCodes;
-}
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RetryConfigRequest {
+        private boolean enabled = false;
+        private int maxRetries = 3;
+        private int retryDelayMs = 1000;
+        private List<Integer> retryableStatusCodes;
+    }
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class SlaConfigRequest {
-    private double minSuccessRate = 99.0;
-    private double maxAvgLatencyMs = 500.0;
-    private double maxP95LatencyMs = 1000.0;
-    private double maxP99LatencyMs = 2000.0;
-    private double maxErrorRate = 1.0;
-}
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SlaConfigRequest {
+        private double minSuccessRate = 99.0;
+        private double maxAvgLatencyMs = 500.0;
+        private double maxP95LatencyMs = 1000.0;
+        private double maxP99LatencyMs = 2000.0;
+        private double maxErrorRate = 1.0;
+    }
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class AlertConfigRequest {
-    private AlertType type;
-    private AlertChannel channel;
-    private String recipient;
-    private Map<String, String> config;
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AlertConfigRequest {
+        private AlertType type;
+        private AlertChannel channel;
+        private String recipient;
+        private Map<String, String> config;
+    }
 }

@@ -16,11 +16,30 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class SchedulerService {
     
     private final ScheduledTestRepository scheduledTestRepository;
     private final LoadTestOrchestrationService orchestrationService;
+    private final java.util.concurrent.ScheduledExecutorService scheduler = 
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+
+    public SchedulerService(
+            ScheduledTestRepository scheduledTestRepository,
+            @org.springframework.context.annotation.Lazy LoadTestOrchestrationService orchestrationService
+    ) {
+        this.scheduledTestRepository = scheduledTestRepository;
+        this.orchestrationService = orchestrationService;
+    }
+
+    public void scheduleStop(String executionId, int durationSeconds) {
+        scheduler.schedule(() -> {
+            try {
+                orchestrationService.stopScenario(executionId);
+            } catch (Exception e) {
+                log.error("Failed to stop scenario execution: {}", executionId, e);
+            }
+        }, durationSeconds, java.util.concurrent.TimeUnit.SECONDS);
+    }
     
     @Scheduled(fixedRate = 60000) // Every minute
     public void checkScheduledTests() {
@@ -60,14 +79,14 @@ public class SchedulerService {
         
         try {
             // Start the scenario
-            LoadTestScenario scenario = orchestrationService.startScenario(
+            String executionId = orchestrationService.startScenario(
                 scheduledTest.getScenarioId()
             );
             
             // Update scheduled test
             scheduledTest.setLastRunAt(Instant.now());
             scheduledTest.setLastRunStatus("STARTED");
-            scheduledTest.setLastRunScenarioId(scenario.getId());
+            scheduledTest.setLastRunScenarioId(executionId);
             
             // Calculate next run time
             Instant nextRun = calculateNextRun(scheduledTest.getCronExpression());

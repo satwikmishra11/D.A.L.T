@@ -31,5 +31,6 @@ public class ScenarioStats {
     private Map<String, Long> errorTypeDistribution;
     private double currentRps;
     private double avgRps;
+    private double peakRps;
     private Instant lastUpdated;
 }

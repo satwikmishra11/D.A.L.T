@@ -4,6 +4,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
+import io.jsonwebtoken.JwtException;
 
 import java.io.IOException;
 
@@ -28,7 +29,7 @@ public class JwtAuthenticationFilter implements Filter {
 
         if (header != null && header.startsWith("Bearer ")) {
             try {
-                tokenProvider.validateToken(header.substring(7));
+                tokenProvider.validate(header.substring(7));
             } catch (JwtException e) {
                 ((HttpServletResponse) response)
                         .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");

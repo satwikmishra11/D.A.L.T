@@ -27,8 +27,9 @@ public class AuthService {
         }
 
         return tokenProvider.generateToken(
-                user.getId().toString(),
-                user.getRole()
+                user.getId(),
+                user.getRole().name(),
+                user.getOrganizationId()
         );
     }
 }

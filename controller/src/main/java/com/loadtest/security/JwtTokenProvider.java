@@ -18,10 +18,11 @@ public class JwtTokenProvider {
     @Value("${security.jwt.expiration-ms}")
     private long expiration;
 
-    public String generateToken(String userId, String role) {
+    public String generateToken(String userId, String role, String organizationId) {
         return Jwts.builder()
                 .setSubject(userId)
                 .claim("org", organizationId)
+                .claim("role", role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(SignatureAlgorithm.HS256, secret)

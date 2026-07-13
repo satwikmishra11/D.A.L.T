@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -28,8 +30,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Tag(name = "Dashboard", description = "API for retrieving aggregated dashboard metrics and system health")
-@Slf4j
 public class DashboardController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DashboardController.class);
     
     private final ScenarioRepository scenarioRepository;
     private final MetricRepository metricRepository;
@@ -167,20 +169,7 @@ public class DashboardController {
                 .workerMetrics(workerMetrics)
                 .timestamp(Instant.now())
                 .build();
-        
         return ResponseEntity.ok(health);
     }
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class SystemHealth {
-    private int activeWorkers;
-    private long taskQueueSize;
-    private long resultQueueSize;
-    private List<WorkerMetrics> workerMetrics;
-    private Instant timestamp;
 }
 
