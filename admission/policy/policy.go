@@ -2,7 +2,7 @@ package policy
 
 import "errors"
 
-func Validate(users int32, duration int32, status string) error {
+func Validate(orgId string, users int32, duration int32, status string) error {
 	if status != "APPROVED" {
 		return errors.New("scenario not approved")
 	}

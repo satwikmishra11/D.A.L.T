@@ -1,7 +1,6 @@
 package observability
 
 import (
-	"context"
 	"os"
 
 	"go.uber.org/zap"
@@ -46,16 +45,6 @@ func Warn(msg string, fields ...zap.Field) {
 	Logger.Warn(msg, fields...)
 }
 
-// WithTrace adds trace_id to context (placeholder for actual tracing integration)
-func WithTrace(ctx context.Context) context.Context {
-	// In a real app, this would extract/inject OpenTelemetry trace IDs
-	return ctx
-}
-
-// TraceID extracts trace_id from context
-func TraceID(ctx context.Context) string {
-	return "trace-id-placeholder" 
-}
 
 func Sync() {
 	_ = Logger.Sync()

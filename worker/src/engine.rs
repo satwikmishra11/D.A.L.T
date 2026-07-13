@@ -1,13 +1,14 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::RwLock;
 use std::time::{Duration, Instant};
 use anyhow::Result;
 use tokio::sync::Mutex;
-use tracing::info;
+use tracing::{info, warn};
 use governor::{Quota, RateLimiter};
 use std::num::NonZeroU32;
 
-use crate::models::{WorkerTask, WorkerResult, HttpMethod};
+use crate::models::{WorkerTask, WorkerResult, HttpMethod, ProfileType};
 use crate::clients::http::HttpClient;
 use crate::metrics::MetricsCollector;
 
@@ -27,11 +28,18 @@ impl TaskExecutor {
         progress_callback: impl Fn(WorkerResult) + Send + Sync + 'static,
         is_cancelled: Arc<AtomicBool>
     ) -> Result<()> {
-        info!("Starting execution for task {} with {} RPS", task.task_id, task.rps);
+        let initial_target_rps = get_target_rps(&task, 0);
+        info!(
+            "Starting execution for task {} with initial target RPS: {}", 
+            task.task_id, 
+            initial_target_rps
+        );
 
-        let rps = NonZeroU32::new(task.rps).unwrap_or(NonZeroU32::new(1).unwrap());
+        let rps = NonZeroU32::new(initial_target_rps).unwrap_or(NonZeroU32::new(1).unwrap());
         let quota = Quota::per_second(rps);
-        let limiter = Arc::new(RateLimiter::direct(quota));
+        let initial_limiter = Arc::new(RateLimiter::direct(quota));
+        
+        let limiter_lock = Arc::new(RwLock::new(initial_limiter));
         
         // Shared metrics across threads
         let metrics = Arc::new(Mutex::new(MetricsCollector::new()));
@@ -81,21 +89,41 @@ impl TaskExecutor {
             }
         });
 
+        // Dynamic rate profile updater loop
+        let limiter_lock_clone = limiter_lock.clone();
+        let task_clone = task.clone();
+        let start_time_clone = start_time.clone();
+        let mut last_rps = initial_target_rps;
+
+        let updater_handle = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_millis(200));
+            loop {
+                interval.tick().await;
+                let elapsed = start_time_clone.elapsed().as_secs() as u32;
+                let current_target_rps = get_target_rps(&task_clone, elapsed);
+                if current_target_rps != last_rps {
+                    info!("Updating target RPS from {} to {}", last_rps, current_target_rps);
+                    let rps = NonZeroU32::new(current_target_rps).unwrap_or(NonZeroU32::new(1).unwrap());
+                    let quota = Quota::per_second(rps);
+                    let new_limiter = Arc::new(RateLimiter::direct(quota));
+                    
+                    if let Ok(mut guard) = limiter_lock_clone.write() {
+                        *guard = new_limiter;
+                    }
+                    last_rps = current_target_rps;
+                }
+            }
+        });
+
         // Load Generation Loop
         // We spawn distinct tasks up to RPS to ensure parallelism, but use the limiter to control rate.
-        // Actually, spawning a task per request at high RPS (e.g. 10k) is bad.
-        // Better: Spawn N workers (where N = max_concurrent_users or sensible number) and have them loop against the limiter.
-        
-        // Calculate a sensible concurrency. If RPS is high, we need more concurrency to keep up.
-        // Rule of thumb: Concurrency = (RPS * Average Latency in seconds) + padding
-        // If we don't know latency, max(50, RPS / 10). Limit to a reasonable max (e.g. 5000)
         let concurrency = std::cmp::min(5000, std::cmp::max(50, task.rps / 10));
         let mut handles = Vec::new();
         
         info!("Calculated concurrency: {} for RPS: {}", concurrency, task.rps);
 
         for _ in 0..concurrency {
-            let limiter = limiter.clone();
+            let limiter_lock_ref = limiter_lock.clone();
             let client = client.clone();
             let task = task.clone();
             let metrics = metrics.clone();
@@ -103,8 +131,12 @@ impl TaskExecutor {
             let is_cancelled_clone = is_cancelled.clone();
             handles.push(tokio::spawn(async move {
                 while start_time.elapsed() < duration && !is_cancelled_clone.load(Ordering::Relaxed) {
-                    // Wait for permission
-                    limiter.until_ready().await;
+                    // Wait for permission from the active limiter
+                    let active_limiter = {
+                        let guard = limiter_lock_ref.read().unwrap();
+                        guard.clone()
+                    };
+                    active_limiter.until_ready().await;
                     
                     let req_start = Instant::now();
                     let response = Self::send_request(&client, &task).await;
@@ -142,6 +174,7 @@ impl TaskExecutor {
         }
         
         reporter_handle.abort();
+        updater_handle.abort();
         
         info!("Execution finished for task {}", task.task_id);
         
@@ -179,5 +212,170 @@ impl TaskExecutor {
             Ok(res) => Ok(res.status().as_u16()),
             Err(e) => Err(e),
         }
+    }
+}
+
+/// Computes the target RPS at a given second of execution based on the task's load profile.
+pub fn get_target_rps(task: &WorkerTask, elapsed_seconds: u32) -> u32 {
+    let load_profile = match &task.load_profile {
+        Some(lp) => lp,
+        None => return task.rps,
+    };
+
+    match load_profile.profile_type {
+        ProfileType::CONSTANT => load_profile.target_rps,
+        ProfileType::RampUp => {
+            if load_profile.ramp_up_seconds == 0 {
+                return load_profile.target_rps;
+            }
+            if elapsed_seconds >= load_profile.ramp_up_seconds {
+                load_profile.target_rps
+            } else {
+                let diff = load_profile.target_rps as i32 - load_profile.initial_rps as i32;
+                let progress = elapsed_seconds as f64 / load_profile.ramp_up_seconds as f64;
+                (load_profile.initial_rps as f64 + diff as f64 * progress) as u32
+            }
+        }
+        ProfileType::SPIKE => {
+            let duration = task.duration_seconds;
+            if duration == 0 {
+                return load_profile.initial_rps;
+            }
+            let midpoint = duration / 2;
+            if midpoint == 0 {
+                return load_profile.target_rps;
+            }
+            if elapsed_seconds <= midpoint {
+                let diff = load_profile.target_rps as i32 - load_profile.initial_rps as i32;
+                let progress = elapsed_seconds as f64 / midpoint as f64;
+                (load_profile.initial_rps as f64 + diff as f64 * progress) as u32
+            } else if elapsed_seconds >= duration {
+                load_profile.initial_rps
+            } else {
+                let diff = load_profile.target_rps as i32 - load_profile.initial_rps as i32;
+                let progress = (elapsed_seconds - midpoint) as f64 / (duration - midpoint) as f64;
+                (load_profile.target_rps as f64 - diff as f64 * progress) as u32
+            }
+        }
+        ProfileType::BURST => {
+            if let Some(bursts) = &load_profile.bursts {
+                for burst in bursts {
+                    let end_second = burst.start_second + burst.duration_seconds;
+                    if elapsed_seconds >= burst.start_second && elapsed_seconds < end_second {
+                        return burst.rps;
+                    }
+                }
+            }
+            load_profile.initial_rps
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{HttpMethod, LoadProfile, BurstConfig};
+    use std::collections::HashMap;
+
+    fn create_test_task(load_profile: Option<LoadProfile>) -> WorkerTask {
+        WorkerTask {
+            task_id: "test-task".to_string(),
+            execution_id: "test-exec".to_string(),
+            target_url: "http://example.com".to_string(),
+            method: HttpMethod::GET,
+            headers: None,
+            body: None,
+            rps: 100,
+            duration_seconds: 60,
+            org_id: "test-org".to_string(),
+            timeout_seconds: None,
+            ignore_tls_errors: None,
+            load_profile,
+        }
+    }
+
+    #[test]
+    fn test_get_target_rps_constant() {
+        let profile = LoadProfile {
+            profile_type: ProfileType::CONSTANT,
+            initial_rps: 10,
+            target_rps: 50,
+            ramp_up_seconds: 10,
+            bursts: None,
+        };
+        let task = create_test_task(Some(profile));
+        
+        assert_eq!(get_target_rps(&task, 0), 50);
+        assert_eq!(get_target_rps(&task, 30), 50);
+        assert_eq!(get_target_rps(&task, 60), 50);
+    }
+
+    #[test]
+    fn test_get_target_rps_ramp_up() {
+        let profile = LoadProfile {
+            profile_type: ProfileType::RampUp,
+            initial_rps: 10,
+            target_rps: 50,
+            ramp_up_seconds: 20,
+            bursts: None,
+        };
+        let task = create_test_task(Some(profile));
+        
+        assert_eq!(get_target_rps(&task, 0), 10);
+        assert_eq!(get_target_rps(&task, 10), 30);
+        assert_eq!(get_target_rps(&task, 20), 50);
+        assert_eq!(get_target_rps(&task, 30), 50);
+    }
+
+    #[test]
+    fn test_get_target_rps_spike() {
+        let profile = LoadProfile {
+            profile_type: ProfileType::SPIKE,
+            initial_rps: 10,
+            target_rps: 50,
+            ramp_up_seconds: 0,
+            bursts: None,
+        };
+        let task = create_test_task(Some(profile));
+        
+        assert_eq!(get_target_rps(&task, 0), 10);
+        assert_eq!(get_target_rps(&task, 15), 30);
+        assert_eq!(get_target_rps(&task, 30), 50);
+        assert_eq!(get_target_rps(&task, 45), 30);
+        assert_eq!(get_target_rps(&task, 60), 10);
+    }
+
+    #[test]
+    fn test_get_target_rps_burst() {
+        let bursts = vec![
+            BurstConfig {
+                start_second: 10,
+                duration_seconds: 5,
+                rps: 200,
+            },
+            BurstConfig {
+                start_second: 40,
+                duration_seconds: 10,
+                rps: 300,
+            },
+        ];
+        let profile = LoadProfile {
+            profile_type: ProfileType::BURST,
+            initial_rps: 20,
+            target_rps: 0,
+            ramp_up_seconds: 0,
+            bursts: Some(bursts),
+        };
+        let task = create_test_task(Some(profile));
+        
+        assert_eq!(get_target_rps(&task, 0), 20);
+        assert_eq!(get_target_rps(&task, 9), 20);
+        assert_eq!(get_target_rps(&task, 10), 200);
+        assert_eq!(get_target_rps(&task, 14), 200);
+        assert_eq!(get_target_rps(&task, 15), 20);
+        assert_eq!(get_target_rps(&task, 39), 20);
+        assert_eq!(get_target_rps(&task, 40), 300);
+        assert_eq!(get_target_rps(&task, 49), 300);
+        assert_eq!(get_target_rps(&task, 50), 20);
     }
 }

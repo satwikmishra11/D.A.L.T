@@ -46,7 +46,7 @@ func NewServer(store state.Store, cfg *config.Config) *Server {
 
 	srv := &Server{
 		engine: policy.NewEngine(
-			policy.EnforceQuota(),
+			policy.EnforceUserQuota(),
 			policy.MaxDuration(3600),
 		),
 		dedupe: dedupe.New(store),
@@ -77,9 +77,15 @@ func (s *Server) ValidateExecution(
 	defer cancel()
 
 	// Payload Validation
-	if req.OrgId == "" {
-		return nil, status.Error(codes.InvalidArgument, "org_id is required")
+	orgId := req.OrgId
+	if orgId == "" {
+		orgId = "default-org"
 	}
+	reqId := req.ScenarioId
+	if reqId == "" {
+		reqId = "default-scenario-id"
+	}
+
 	if req.Users <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "users must be greater than 0")
 	}
@@ -87,7 +93,7 @@ func (s *Server) ValidateExecution(
 		return nil, status.Error(codes.InvalidArgument, "duration must be greater than 0")
 	}
 
-	if s.dedupe.Seen(ctx, req.RequestId) {
+	if s.dedupe.Seen(ctx, reqId) {
 		return &pb.ExecutionResponse{Allowed: true}, nil
 	}
 
@@ -101,7 +107,7 @@ func (s *Server) ValidateExecution(
 	defer s.shed.Exit(ctx)
 
 	// Rate Limit per Org
-	allowed, err := s.limit.Allow(ctx, req.OrgId, s.cfg.RateLimit, time.Minute)
+	allowed, err := s.limit.Allow(ctx, orgId, s.cfg.RateLimit, time.Minute)
 	if err != nil {
 		observability.Error("rate_limit_error", zap.Error(err))
 		return &pb.ExecutionResponse{
@@ -119,21 +125,21 @@ func (s *Server) ValidateExecution(
 	}
 
 	err = s.engine.Evaluate(policy.Context{
-		OrgID:    req.OrgId,
+		OrgID:    orgId,
 		Users:   req.Users,
 		Duration: req.Duration,
 	})
 
 	if err != nil {
 		observability.PolicyDeniedTotal.WithLabelValues("policy").Inc()
-		audit.Record(req.OrgId, "DENIED", err.Error())
+		audit.Record(orgId, "DENIED", err.Error())
 		return &pb.ExecutionResponse{
 			Allowed: false,
 			Reason:  err.Error(),
 		}, nil
 	}
 
-	s.dedupe.Mark(ctx, req.RequestId)
-	audit.Record(req.OrgId, "ALLOWED", "")
+	s.dedupe.Mark(ctx, reqId)
+	audit.Record(orgId, "ALLOWED", "")
 	return &pb.ExecutionResponse{Allowed: true}, nil
 }

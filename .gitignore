@@ -45,3 +45,4 @@ controller/mvn_compile.log
 controller/mvn_verbose.log
 controller/cp.txt
 controller/sources.txt
+worker/Cargo.lock

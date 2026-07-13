@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -24,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"admission/auth"
+	"admission/leadership"
 )
 
 func loadTLSConfig(cfg *config.Config) (credentials.TransportCredentials, error) {
@@ -72,6 +74,7 @@ func main() {
 
 	store := state.NewRedis(cfg)
 	lifecycle.WaitForRedis(store)
+	leadership.StartElection(store.Client())
 
 	// Observability Server (Metrics + Pprof)
 	go func() {
@@ -85,7 +88,7 @@ func main() {
 		}
 	}()
 
-	httpserver.Start()
+	httpserver.StartHealthServer()
 
 	lis, err := net.Listen("tcp", ":"+cfg.GrpcPort)
 	if err != nil {
@@ -133,7 +136,7 @@ func main() {
 	observability.Info("Shutting down admission service...")
 	
 	grpcSrv.GracefulStop()
-	lifecycle.Wait()
+	lifecycle.Wait(context.Background())
 	
 	observability.Info("Shutdown complete")
 }
