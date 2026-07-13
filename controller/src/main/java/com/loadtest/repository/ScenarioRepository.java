@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface ScenarioRepository extends MongoRepository<LoadTestScenario, String> {
     
     List<LoadTestScenario> findByUserId(String userId);
+
+    java.util.Optional<LoadTestScenario> findByLastExecutionId(String lastExecutionId);
     
     List<LoadTestScenario> findByStatus(ScenarioStatus status);
     

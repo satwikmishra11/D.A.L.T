@@ -105,21 +105,21 @@ public class LoadTestOrchestrationService {
         return executionId;
     }
 
-    /**
-     * Stops a running scenario execution safely.
-     */
     @Transactional
     public void stopScenario(String executionId) {
-        // Find scenario by executionId not supported by standard repo yet without custom query
-        // Assuming we look up via ID or broadcast stop generally.
-        // For now, simpler logic:
-        
         log.info("Stopping execution {}", executionId);
         
-        // redisQueueService.broadcastStop(executionId); // Feature to be added
-        // For now clear queue if needed or rely on workers expiring
+        LoadTestScenario scenario = scenarioRepository.findByLastExecutionId(executionId)
+                .orElse(null);
         
-        // Cleanup streams
-        // webSocketMetricsStreamer.unregisterScenario(...);
+        if (scenario != null) {
+            redisQueueService.broadcastStop(executionId, scenario.getNumWorkers());
+            scenario.setRunning(false);
+            scenario.setStatus(ScenarioStatus.CANCELLED);
+            scenarioRepository.save(scenario);
+            webSocketMetricsStreamer.unregisterScenario(scenario.getId());
+        } else {
+            log.warn("Could not find scenario for execution ID: {}", executionId);
+        }
     }
 }
