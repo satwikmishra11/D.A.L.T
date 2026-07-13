@@ -140,6 +140,15 @@ public class RedisQueueService {
         return getActiveWorkerIds().size();
     }
 
+    public void broadcastStop(String executionId, int numWorkers) {
+        for (int i = 0; i < numWorkers; i++) {
+            String taskId = executionId + "-w" + i;
+            String key = "task:cancellation:" + taskId;
+            redisTemplate.opsForValue().set(key, "true", Duration.ofMinutes(10));
+        }
+        log.info("Published cancellation keys for execution {} with {} workers", executionId, numWorkers);
+    }
+
     // ========== Cleanup Operations ==========
     
     public void clearTaskQueue() {
