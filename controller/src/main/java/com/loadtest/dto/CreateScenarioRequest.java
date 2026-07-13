@@ -147,6 +147,21 @@ public class ScenarioResponse {
     private Instant completedAt;
     private String environment;
     private List<String> tags;
+
+    public ScenarioResponse(LoadTestScenario scenario) {
+        this.id = scenario.getId();
+        this.userId = scenario.getUserId();
+        this.name = scenario.getName();
+        this.targetUrl = scenario.getTargetUrl();
+        this.method = scenario.getMethod();
+        this.status = scenario.getStatus();
+        this.durationSeconds = scenario.getDurationSeconds();
+        this.numWorkers = scenario.getNumWorkers();
+        this.loadProfile = scenario.getLoadProfile();
+        this.createdAt = scenario.getCreatedAt();
+        this.startedAt = scenario.getStartedAt();
+        this.completedAt = scenario.getCompletedAt();
+    }
 }
 
 @Data
@@ -254,231 +269,12 @@ public class WorkerMetrics {
     private String currentTaskId;
 }
 
-// ========== Exception Classes ==========
-package com.loadtest.exception;
-
-public class ScenarioNotFoundException extends RuntimeException {
-    public ScenarioNotFoundException(String scenarioId) {
-        super("Scenario not found: " + scenarioId);
-    }
-}
-
-public class InsufficientWorkersException extends RuntimeException {
-    public InsufficientWorkersException(int required, int available) {
-        super(String.format("Insufficient workers: required %d, available %d", required, available));
-    }
-}
-
-public class ScenarioAlreadyRunningException extends RuntimeException {
-    public ScenarioAlreadyRunningException(String scenarioId) {
-        super("Scenario already running: " + scenarioId);
-    }
-}
-
-public class InvalidScenarioConfigException extends RuntimeException {
-    public InvalidScenarioConfigException(String message) {
-        super("Invalid scenario configuration: " + message);
-    }
-}
-
-public class QuotaExceededException extends RuntimeException {
-    public QuotaExceededException(String message) {
-        super("Quota exceeded: " + message);
-    }
-}
-
-public class AuthenticationException extends RuntimeException {
-    public AuthenticationException(String message) {
-        super(message);
-    }
-}
-
-public class ExportException extends RuntimeException {
-    public ExportException(String message, Throwable cause) {
-        super("Export failed: " + message, cause);
-    }
-}
-
-// ========== Global Exception Handler ==========
-package com.loadtest.exception;
-
-import com.loadtest.dto.ErrorResponse;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-
-@Slf4j
-@RestControllerAdvice
-public class GlobalExceptionHandler {
-    
-    @ExceptionHandler(ScenarioNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleScenarioNotFound(
-            ScenarioNotFoundException ex, WebRequest request) {
-        
-        log.error("Scenario not found: {}", ex.getMessage());
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("SCENARIO_NOT_FOUND")
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.NOT_FOUND.value())
-                .timestamp(Instant.now())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-    }
-    
-    @ExceptionHandler(InsufficientWorkersException.class)
-    public ResponseEntity<ErrorResponse> handleInsufficientWorkers(
-            InsufficientWorkersException ex, WebRequest request) {
-        
-        log.error("Insufficient workers: {}", ex.getMessage());
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("INSUFFICIENT_WORKERS")
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.SERVICE_UNAVAILABLE.value())
-                .timestamp(Instant.now())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
-    }
-    
-    @ExceptionHandler(ScenarioAlreadyRunningException.class)
-    public ResponseEntity<ErrorResponse> handleAlreadyRunning(
-            ScenarioAlreadyRunningException ex, WebRequest request) {
-        
-        log.error("Scenario already running: {}", ex.getMessage());
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("SCENARIO_ALREADY_RUNNING")
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.CONFLICT.value())
-                .timestamp(Instant.now())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-    }
-    
-    @ExceptionHandler(InvalidScenarioConfigException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidConfig(
-            InvalidScenarioConfigException ex, WebRequest request) {
-        
-        log.error("Invalid scenario config: {}", ex.getMessage());
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("INVALID_CONFIGURATION")
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.BAD_REQUEST.value())
-                .timestamp(Instant.now())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-    
-    @ExceptionHandler(QuotaExceededException.class)
-    public ResponseEntity<ErrorResponse> handleQuotaExceeded(
-            QuotaExceededException ex, WebRequest request) {
-        
-        log.error("Quota exceeded: {}", ex.getMessage());
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("QUOTA_EXCEEDED")
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.TOO_MANY_REQUESTS.value())
-                .timestamp(Instant.now())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
-    }
-    
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ErrorResponse> handleAuthentication(
-            AuthenticationException ex, WebRequest request) {
-        
-        log.error("Authentication error: {}", ex.getMessage());
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("AUTHENTICATION_FAILED")
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.UNAUTHORIZED.value())
-                .timestamp(Instant.now())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
-    }
-    
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDenied(
-            AccessDeniedException ex, WebRequest request) {
-        
-        log.error("Access denied: {}", ex.getMessage());
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("ACCESS_DENIED")
-                .message("You don't have permission to access this resource")
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.FORBIDDEN.value())
-                .timestamp(Instant.now())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-    }
-    
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationErrors(
-            MethodArgumentNotValidException ex, WebRequest request) {
-        
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-        
-        log.error("Validation error: {}", errors);
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("VALIDATION_FAILED")
-                .message("Request validation failed")
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.BAD_REQUEST.value())
-                .timestamp(Instant.now())
-                .details(errors)
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-    
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGlobalException(
-            Exception ex, WebRequest request) {
-        
-        log.error("Unexpected error", ex);
-        
-        ErrorResponse error = ErrorResponse.builder()
-                .error("INTERNAL_SERVER_ERROR")
-                .message("An unexpected error occurred")
-                .path(request.getDescription(false).replace("uri=", ""))
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .timestamp(Instant.now())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-    }
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TimeSeriesPoint {
+    private Instant timestamp;
+    private double value;
+    private String metricName;
 }
