@@ -236,6 +236,8 @@ public class ErrorResponse {
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DashboardSummary {
     private long totalScenarios;
     private long activeScenarios;
@@ -249,6 +251,8 @@ public class DashboardSummary {
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class RecentScenario {
     private String id;
     private String name;
@@ -260,6 +264,8 @@ public class RecentScenario {
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class WorkerMetrics {
     private String workerId;
     private WorkerStatus status;
