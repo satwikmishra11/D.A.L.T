@@ -22,6 +22,9 @@ target
 worker/.DS_Store
 .DS_Store
 node_modules
+build/
+frontend/build/
+dist/
 
 # Terraform
 .terraform/
