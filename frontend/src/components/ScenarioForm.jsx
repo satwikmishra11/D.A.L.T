@@ -1,6 +1,6 @@
 // ========== src/components/ScenarioForm.jsx ==========
 import React, { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { HTTP_METHODS, LOAD_PROFILE_TYPES, ENVIRONMENTS, ALERT_CHANNELS } from '../utils/constants';
 
 const ScenarioForm = ({ scenario, onChange, onSubmit, onCancel, creating }) => {

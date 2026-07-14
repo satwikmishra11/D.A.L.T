@@ -51,6 +51,7 @@ const ScenariosView = () => {
       const res = await scenarioAPI.getAll();
       setScenarios(res.data);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load scenarios', err);
     } finally {
       setLoading(false);

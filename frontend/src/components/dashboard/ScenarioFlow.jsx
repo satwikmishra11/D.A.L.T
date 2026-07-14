@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserCircle, Key, Database, CreditCard, ArrowRight, Activity } from 'lucide-react';
+import { UserCircle, Key, Database, CreditCard, Activity } from 'lucide-react';
 
 const steps = [
   { id: 1, name: 'User Authentication', icon: Key, status: 'active', latency: '45ms', load: '1200 RPS' },

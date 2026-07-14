@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Activity, Server, Database, Cloud } from 'lucide-react';
+import { Server, Database, Cloud } from 'lucide-react';
 
 const nodes = [
   { id: 'gateway', label: 'API Gateway', x: 50, y: 50, type: 'cloud', status: 'healthy' },

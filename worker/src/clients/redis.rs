@@ -42,7 +42,7 @@ impl RedisClient {
         redis::cmd("RPUSH")
             .arg(&self.config.result_queue)
             .arg(json)
-            .query_async(&mut conn)
+            .query_async::<_, ()>(&mut conn)
             .await?;
         Ok(())
     }
@@ -51,8 +51,8 @@ impl RedisClient {
         let mut conn = self.manager.clone();
         redis::pipe()
             .set(key, json)
-            .expire(key, ttl_secs)
-            .query_async(&mut conn)
+            .expire(key, ttl_secs as i64)
+            .query_async::<_, ()>(&mut conn)
             .await?;
         Ok(())
     }

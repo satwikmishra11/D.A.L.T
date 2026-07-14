@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Command, Activity, Zap, PlayCircle, Settings, Users, ArrowRight, X } from 'lucide-react';
+import { Search, Command, Activity, Zap, PlayCircle, Settings, Users, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const actions = [
@@ -55,6 +55,7 @@ const CommandPalette = () => {
       }
       if (e.key === 'Enter' && filteredActions[selectedIndex]) {
         e.preventDefault();
+        // eslint-disable-next-line no-console
         console.log('Action triggered:', filteredActions[selectedIndex].title);
         setIsOpen(false);
       }
@@ -115,6 +116,7 @@ const CommandPalette = () => {
                         key={action.id}
                         className={`flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-colors ${isSelected ? 'bg-primary-50 text-primary-900' : 'hover:bg-gray-50 text-gray-700'}`}
                         onClick={() => {
+                          // eslint-disable-next-line no-console
                           console.log('Action triggered:', action.title);
                           setIsOpen(false);
                         }}

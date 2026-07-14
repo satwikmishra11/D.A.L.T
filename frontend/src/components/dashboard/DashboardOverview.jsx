@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, Activity, AlertTriangle, Clock, Zap, ArrowRight, Star, Server, Shield, Database, CheckCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, AlertTriangle, Zap, ArrowRight, Star, CheckCircle } from 'lucide-react';
 import AIInsights from './AIInsights';
 import TopologyMap from './TopologyMap';
 import LiveLogViewer from './LiveLogViewer';
@@ -85,6 +85,7 @@ const DashboardOverview = () => {
       const res = await dashboardAPI.getSummary();
       setSummary(res.data);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to fetch dashboard summary', err);
     } finally {
       setLoading(false);

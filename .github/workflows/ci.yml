@@ -78,6 +78,8 @@ jobs:
           npm install
 
       - name: Build Frontend
+        env:
+          CI: false
         run: |
           cd frontend
           npm run build

@@ -23,6 +23,7 @@ const ComparisonView = () => {
         // Filter out scenarios that don't have completed executions or runs
         setAllScenarios(res.data || []);
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error('Failed to load scenarios for comparison', err);
       } finally {
         setLoadingList(false);
